@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Management | Luxé</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background: #f8f9fa; padding: 50px; font-family: 'Inter', sans-serif; }
+        .dashboard-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 30px; }
+        .thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <h2 class="fw-light">Collection Inventory</h2>
+            <a href="{% url 'product_add' %}" class="btn btn-dark px-4 rounded-pill">+ New Product</a>
+        </div>
+
+        <div class="dashboard-card">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Preview</th>
+                        <th>Product Name</th>
+                        <th>Price</th>
+                        <th>3D File</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in products %}
+                    <tr>
+                        <td><img src="{{ p.main_image.url }}" class="thumb"></td>
+                        <td><strong>{{ p.name }}</strong></td>
+                        <td>${{ p.price }}</td>
+                        <td><small class="text-muted">{{ p.model_3d.name }}</small></td>
+                        <td>
+                            <a href="/" class="btn btn-sm btn-light">View in 3D</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-5">No products found. Add your first one!</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

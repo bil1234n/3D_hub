@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxé | Ultimate Immersive Experience</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #c5a059; --dark: #111; --glass: rgba(255, 255, 255, 0.88); --shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        * { box-sizing: border-box; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        body { margin: 0; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; background: #fff; }
+
+        /* Sidebar Architecture */
+        .sidebar { width: 340px; background: white; border-right: 1px solid #f0f0f0; display: flex; flex-direction: column; z-index: 100; position: relative; }
+        .sidebar.hidden { transform: translateX(-100%); margin-right: -340px; }
+        .sidebar-header { padding: 40px 30px; letter-spacing: 6px; font-weight: 200; font-size: 1.4rem; text-align: center; border-bottom: 1px solid #f9f9f9; }
+        
+        .product-list { flex: 1; overflow-y: auto; padding: 20px; }
+        .product-list::-webkit-scrollbar { width: 4px; }
+        .product-list::-webkit-scrollbar-thumb { background: #eee; border-radius: 10px; }
+
+        .item-card { 
+            padding: 20px; margin-bottom: 15px; cursor: pointer; border-radius: 20px;
+            display: flex; flex-direction: column; border: 1px solid transparent; background: #fcfcfc;
+        }
+        .item-card.active { background: #fff; border-color: var(--accent); box-shadow: var(--shadow); }
+
+        .view-selector {
+            margin-top: 12px; padding: 10px; border-radius: 10px; border: 1px solid #eee;
+            font-size: 11px; text-transform: uppercase; letter-spacing: 1px; outline: none; background: white; cursor: pointer;
+        }
+
+        /* Main Display Stage */
+        .main-stage { flex: 1; position: relative; background: radial-gradient(circle at center, #ffffff 0%, #f2f2f2 100%); }
+        
+        model-viewer { 
+            width: 100%; height: 100%; outline: none; 
+            --poster-color: transparent;
+        }
+
+        /* Image Gallery Overlay */
+        #image-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; align-items: center; justify-content: center; background: #fdfdfd; z-index: 5;
+        }
+        #image-overlay img { max-width: 80%; max-height: 80%; object-fit: contain; }
+
+        .gallery-nav {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px; align-items: center; background: white; padding: 10px 25px;
+            border-radius: 40px; box-shadow: var(--shadow); z-index: 10;
+        }
+        .nav-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--dark); }
+
+        /* Control UI Dock */
+        .control-dock { position: absolute; top: 30px; right: 30px; display: flex; gap: 15px; z-index: 100; }
+        .icon-btn { 
+            width: 54px; height: 54px; background: white; border: none; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: var(--shadow); color: var(--dark);
+        }
+        .icon-btn:hover { background: var(--dark); color: white; transform: scale(1.1); }
+
+        /* Information Panel */
+        .glass-panel { 
+            position: absolute; bottom: 30px; left: 50%; transform: translate(-50%, 150%);
+            width: 90%; max-width: 500px; background: var(--glass);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            padding: 40px; border-radius: 32px; border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: var(--shadow); z-index: 20; opacity: 0;
+        }
+        .glass-panel.show { transform: translate(-50%, 0); opacity: 1; }
+
+        .price { font-size: 2.2rem; font-weight: 200; margin: 15px 0; }
+        .ar-btn { 
+            width: 100%; background: var(--dark); color: white; border: none; padding: 20px;
+            border-radius: 16px; font-weight: 600; cursor: pointer; transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+        }
+        .ar-btn:hover { background: #000; letter-spacing: 1px; }
+
+        /* QR Code Modal for Desktop */
+        #qr-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(12px);
+        }
+        .qr-card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 380px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">LUXÉ</div>
+    <div class="product-list" id="ui-list"></div>
+</div>
+
+<div class="main-stage">
+    <div class="control-dock">
+        <button class="icon-btn" onclick="toggleSidebar()"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <button class="icon-btn" onclick="toggleInfo()"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></button>
+    </div>
+
+    <model-viewer id="viewer" 
+        camera-controls auto-rotate 
+        shadow-intensity="1.8" shadow-softness="1"
+        environment-image="neutral" exposure="1.1"
+        ar ar-modes="webxr scene-viewer quick-look" 
+        ar-scale="fixed" xr-environment>
+        <button slot="ar-button" style="display:none;"></button>
+    </model-viewer>
+
+    <div id="image-overlay">
+        <img id="static-img" src="">
+        <div class="gallery-nav" id="gallery-controls"></div>
+    </div>
+
+    <div class="glass-panel" id="info-panel">
+        <span style="text-transform: uppercase; font-size: 11px; letter-spacing: 4px; color: var(--accent); font-weight: 600;">Product Intelligence</span>
+        <h2 id="p-title" style="margin:10px 0 0 0; font-weight: 400; font-size: 1.8rem;">Design</h2>
+        <div class="price" id="p-price">$0.00</div>
+        <p id="p-desc" style="color: #444; font-size: 0.95rem; line-height: 1.6; margin-bottom: 30px;"></p>
+        
+        <button class="ar-btn" onclick="handleARTrigger()">
+            <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M7 11V7c0-2.21 1.79-4 4-4h2c2.21 0 4 1.79 4 4v4h2V7c0-3.31-2.69-6-6-6h-2c-3.31 0-6 2.69-6 6v4h2z"/></svg>
+            ACTIVATE AUGMENTED REALITY
+        </button>
+    </div>
+</div>
+
+<div id="qr-modal">
+    <div class="qr-card">
+        <h3 style="margin-top:0;">Mobile Augmented Reality</h3>
+        <p style="color:#666; font-size:0.9rem;">Scan this code with your phone to instantly place this design in your home environment.</p>
+        <div id="qr-container" style="margin:25px 0; border:1px solid #eee; padding:15px; border-radius:20px; display:inline-block;">
+            <img id="qr-image" src="" style="width:200px; height:200px; border-radius:10px;">
+        </div>
+        <button onclick="closeQR()" style="width:100%; padding:18px; border-radius:12px; border:none; background:#111; color:white; font-weight:600; cursor:pointer;">Close</button>
+    </div>
+</div>
+
+<script>
+    const inventory = [
+        {% for p in products %}
+        {
+            id: "{{ p.id }}",
+            name: "{{ p.name }}",
+            category: "{{ p.category }}", 
+            price: "{{ p.price }}",
+            desc: "{{ p.description|escapejs }}",
+            file: "{{ p.model_3d.url }}",
+            images: [
+                "{{ p.main_image.url }}",
+                {% for extra in p.gallery.all %}"{{ extra.image.url }}",{% endfor %}
+            ],
+            currentImgIndex: 0
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function updateViewMode(id, mode) {
+        const item = inventory.find(p => p.id === id);
+        const viewer = document.getElementById('viewer');
+        const overlay = document.getElementById('image-overlay');
+        
+        if (mode === 'image') {
+            viewer.style.opacity = '0';
+            setTimeout(() => {
+                viewer.style.display = 'none';
+                overlay.style.display = 'flex';
+                renderGallery(item);
+            }, 400);
+        } else {
+            overlay.style.display = 'none';
+            viewer.style.display = 'block';
+            setTimeout(() => viewer.style.opacity = '1', 10);
+        }
+    }
+
+    function renderGallery(item) {
+        const img = document.getElementById('static-img');
+        const controls = document.getElementById('gallery-controls');
+        img.src = item.images[item.currentImgIndex];
+        
+        controls.innerHTML = `
+            <button class="nav-btn" onclick="prevImg('${item.id}')">❮</button>
+            <span style="font-size:12px; font-weight:600;">${item.currentImgIndex + 1} / ${item.images.length}</span>
+            <button class="nav-btn" onclick="nextImg('${item.id}')">❯</button>
+        `;
+    }
+
+    function nextImg(id) {
+        const item = inventory.find(p => p.id === id);
+        item.currentImgIndex = (item.currentImgIndex + 1) % item.images.length;
+        renderGallery(item);
+    }
+
+    function prevImg(id) {
+        const item = inventory.find(p => p.id === id);
+        item.currentImgIndex = (item.currentImgIndex - 1 + item.images.length) % item.images.length;
+        renderGallery(item);
+    }
+
+    function handleARTrigger() {
+        const viewer = document.getElementById('viewer');
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            viewer.activateAR();
+        } else {
+            const qrModal = document.getElementById('qr-modal');
+            const qrImg = document.getElementById('qr-image');
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
+            qrModal.style.display = 'flex';
+        }
+    }
+
+    function closeQR() { document.getElementById('qr-modal').style.display = 'none'; }
+
+    function init() {
+        const list = document.getElementById('ui-list');
+        if (inventory.length === 0) return;
+
+        list.innerHTML = inventory.map((p) => `
+            <div class="item-card" id="card-${p.id}" onclick="selectItem('${p.id}')">
+                <span style="font-size: 9px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-weight:600;">${p.category}</span>
+                <span style="font-weight: 600; font-size: 0.95rem;">${p.name}</span>
+                <select class="view-selector" onclick="event.stopPropagation()" onchange="updateViewMode('${p.id}', this.value)">
+                    <option value="3d">Digital Twin (3D)</option>
+                    <option value="image">Photography</option>
+                </select>
+            </div>
+        `).join('');
+        
+        selectItem(inventory[0].id);
+    }
+
+    function selectItem(id) {
+        const item = inventory.find(p => p.id === id);
+        const viewer = document.getElementById('viewer');
+        const overlay = document.getElementById('image-overlay');
+
+        viewer.style.display = 'block';
+        viewer.style.opacity = '1';
+        overlay.style.display = 'none';
+        viewer.src = item.file;
+        
+        document.getElementById('p-title').innerText = item.name;
+        document.getElementById('p-price').innerText = `$${item.price}`;
+        document.getElementById('p-desc').innerText = item.desc;
+
+        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(`card-${id}`).classList.add('active');
+        document.getElementById('info-panel').classList.add('show');
+    }
+
+    function toggleInfo() { document.getElementById('info-panel').classList.toggle('show'); }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+
+    init();
+</script>
+</body>
+</html>
