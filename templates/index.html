@@ -67,10 +67,17 @@
 
     <main class="stage">
         <model-viewer id="engine"
-            camera-controls auto-rotate shadow-intensity="1"
-            ar ar-modes="webxr scene-viewer quick-look"
-            crossorigin="anonymous" loading="eager">
-            <button slot="ar-button" style="display:none;"></button>
+            camera-controls 
+            auto-rotate 
+            shadow-intensity="1"
+            ar 
+            ar-modes="webxr scene-viewer quick-look"
+            ar-scale="auto"
+            crossorigin="anonymous" 
+            loading="eager"
+            /* This tells iOS to use the USDZ file if provided */
+            ios-src=""> 
+            <button slot="ar-button" id="hidden-ar-trigger" style="display:none;"></button>
         </model-viewer>
 
         <div class="ui-overlay">
@@ -101,28 +108,35 @@
     // 1. CLOUDINARY HANDLER (Professional mapping)
     const CLOUD_NAME = "duhidqjmj";
     
+    // Update your resolveAsset function to be even stricter
     function resolveAsset(url, isModel = false) {
         if (!url || url === "None") return "";
-        // If it's already a full HTTPS Cloudinary URL, keep it
-        if (url.includes('res.cloudinary.com')) return url.replace('http://', 'https://');
+        let path = url.replace('/media/', '');
         
-        // Clean the path for Cloudinary
-        const path = url.replace('/media/', '');
+        // Ensure we use 'raw' for models to preserve MIME types
         const type = isModel ? 'raw/upload' : 'image/upload';
+        
+        // If it's already a Cloudinary URL, just ensure it's HTTPS
+        if (url.includes('res.cloudinary.com')) {
+            return url.replace('http://', 'https://');
+        }
+        
         return `https://res.cloudinary.com/${CLOUD_NAME}/${type}/${path}`;
     }
 
-    // 2. DATA INJECTION
     const inventory = [
         {% for p in products %}
         {
             id: "{{ p.id|escapejs }}",
             name: "{{ p.name|escapejs }}",
             price: "{{ p.price|escapejs }}",
-            model: resolveAsset("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}", true)
+            glb: resolveAsset("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}", true),
+            // PROFESSIONAL ADDITION: Add a field in Django for USDZ if you want 100% iPhone success
+            usdz: resolveAsset("{% if p.usdz_model %}{{ p.usdz_model.url|escapejs }}{% endif %}", true)
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
+    
 
     // 3. CORE SYSTEM
     const Engine = {
@@ -154,9 +168,14 @@
 
         select(id) {
             const item = inventory.find(p => p.id == id);
-            this.updateLog(`Selected: ${item.name}`);
+            this.viewer.src = item.glb;
             
-            this.viewer.src = item.model;
+            // Set the iOS source specifically
+            if(item.usdz) {
+                this.viewer.setAttribute('ios-src', item.usdz);
+            } else {
+                this.viewer.removeAttribute('ios-src');
+            }
             document.getElementById('view-name').innerText = item.name;
             document.getElementById('view-price').innerText = `$${item.price}`;
             
