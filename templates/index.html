@@ -194,32 +194,43 @@
 
     // --- PROFESSIONAL NATIVE AR ROUTER ---
     function handleProfessionalAR() {
-        const item = inventory.find(p => p.id === activeID);
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const encodedUrl = encodeURIComponent(item.file);
+    const item = inventory.find(p => p.id === activeID);
+    if (!item || !item.file || item.file.includes('None')) {
+        alert("Model file not found. Please check your Django admin.");
+        return;
+    }
+
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    
+    // 1. Android Native Intent (Scene Viewer)
+    if (/android/i.test(userAgent)) {
+        // We use 'S.browser_fallback_url' to tell the phone where to go if it fails.
+        // We set it to the current window location so it stays on your site instead of going to Google's help page.
+        const fallbackUrl = encodeURIComponent(window.location.href);
+        const modelUrl = item.file; // The direct link to your .glb
         const title = encodeURIComponent(item.name);
 
-        // 1. Android Native Intent (Scene Viewer)
-        if (/android/i.test(userAgent)) {
-            const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${encodedUrl}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;`;
-            window.location.href = intent;
-        } 
-        // 2. iOS Native Quick Look
-        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-            const anchor = document.createElement('a');
-            anchor.setAttribute('rel', 'ar');
-            anchor.appendChild(document.createElement('img'));
-            anchor.setAttribute('href', item.usdz || item.file);
-            anchor.click();
-        } 
-        // 3. Desktop Fallback (QR Code)
-        else {
-            const qrModal = document.getElementById('qr-modal');
-            const qrImg = document.getElementById('qr-image');
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
-            qrModal.style.display = 'flex';
-        }
+        const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${modelUrl}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=${fallbackUrl};end;`;
+        
+        console.log("Launching Android AR:", intent);
+        window.location.href = intent;
+    } 
+    // 2. iOS Native Quick Look
+    else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+        const anchor = document.createElement('a');
+        anchor.setAttribute('rel', 'ar');
+        anchor.appendChild(document.createElement('img'));
+        anchor.setAttribute('href', item.usdz || item.file);
+        anchor.click();
+    } 
+    // 3. Desktop Fallback (QR Code)
+    else {
+        const qrModal = document.getElementById('qr-modal');
+        const qrImg = document.getElementById('qr-image');
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
+        qrModal.style.display = 'flex';
     }
+}
 
     // Your existing Gallery & UI functions
     function updateViewMode(id, mode) {
