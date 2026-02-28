@@ -3,117 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Luxé | Professional AR Engine</title>
+    <title>Luxé | Enterprise AR Engine</title>
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
-        :root { --accent: #c5a059; --dark: #0a0a0a; --glass: rgba(255, 255, 255, 0.95); }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --accent: #c5a059; --dark: #0f0f0f; --err: #ff4d4d; --glass: rgba(255, 255, 255, 0.98); }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; height: 100vh; display: flex; overflow: hidden; }
 
-        /* Sidebar Control */
-        .sidebar { width: 320px; border-right: 1px solid #eee; display: flex; flex-direction: column; background: #fff; z-index: 10; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sidebar.collapsed { transform: translateX(-100%); margin-right: -320px; }
+        /* Sidebar Architecture */
+        .sidebar { width: 320px; border-right: 1px solid #eee; display: flex; flex-direction: column; background: #fff; z-index: 100; }
+        .sidebar-header { padding: 40px 25px; border-bottom: 1px solid #f5f5f5; }
+        .sidebar-header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 5px; font-weight: 300; }
+
+        .product-list { flex: 1; overflow-y: auto; padding: 15px; }
+        .product-item { 
+            padding: 20px; margin-bottom: 10px; border-radius: 15px; cursor: pointer; 
+            background: #fcfcfc; border: 1px solid #f0f0f0; transition: 0.3s;
+        }
+        .product-item.active { border-color: var(--accent); background: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
 
         /* Main Viewport */
-        .viewport { flex: 1; position: relative; background: #f9f9f9; }
-        model-viewer { width: 100%; height: 100%; background-color: #f9f9f9; }
+        .stage { flex: 1; position: relative; background: #f9f9f9; }
+        model-viewer { width: 100%; height: 100%; background: #f9f9f9; --poster-color: transparent; }
 
-        /* Professional UI Components */
-        .overlay-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; z-index: 50; }
+        /* Control UI */
+        .ui-overlay { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; z-index: 200; }
+        .info-card { background: var(--glass); padding: 30px; border-radius: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05); }
         
-        .product-card { 
-            background: var(--glass); backdrop-filter: blur(15px); padding: 25px; 
-            border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border: 1px solid #fff;
-        }
-
-        .btn-primary { 
-            width: 100%; padding: 18px; border: none; border-radius: 14px; 
+        .ar-button { 
+            width: 100%; padding: 20px; border: none; border-radius: 15px; 
             background: var(--dark); color: #fff; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
         }
 
-        /* Diagnostic Tools (Hide in Production) */
-        #debug-log { 
-            position: absolute; top: 10px; left: 10px; font-size: 10px; 
-            background: rgba(0,0,0,0.7); color: #0f0; padding: 10px; border-radius: 5px; 
-            pointer-events: none; z-index: 1000; max-width: 200px;
+        /* Diagnostic Panel */
+        #diagnostic-log {
+            position: absolute; top: 20px; left: 20px; width: 280px; 
+            background: rgba(0,0,0,0.8); color: #00ff00; font-family: monospace; 
+            font-size: 11px; padding: 15px; border-radius: 10px; z-index: 500;
+            pointer-events: none; line-height: 1.5;
         }
+        .log-error { color: var(--err); font-weight: bold; }
 
-        /* Modal */
-        .modal { 
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
-            z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px); 
+        /* Fallback Modal */
+        #error-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(10px);
         }
-        .modal-content { background: #fff; padding: 40px; border-radius: 30px; text-align: center; }
-
-        .item-row { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
-        .item-row:hover { background: #f5f5f5; }
-        .item-row.active { border-left: 4px solid var(--accent); background: #fffaf0; }
+        .modal-box { background: white; width: 90%; max-width: 400px; padding: 40px; border-radius: 30px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="debug-log">System: Initializing...</div>
+    <div id="diagnostic-log">SYSTEM IDLE...</div>
 
-    <aside class="sidebar" id="sidebar">
-        <div style="padding: 30px; border-bottom: 1px solid #eee; font-weight: 600; letter-spacing: 2px;">COLLECTION</div>
-        <div id="product-list" style="overflow-y: auto; flex: 1;"></div>
+    <aside class="sidebar">
+        <div class="sidebar-header"><h1>LUXÉ</h1></div>
+        <div class="product-list" id="p-list"></div>
     </aside>
 
-    <main class="viewport">
-        <model-viewer id="main-engine"
-            loading="eager"
-            camera-controls
-            auto-rotate
-            ar
-            ar-modes="webxr scene-viewer quick-look"
-            ar-placement="floor"
-            shadow-intensity="1.5"
-            environment-image="neutral"
-            crossorigin="anonymous">
-            
-            <button slot="ar-button" id="native-ar-trigger" style="display:none;"></button>
+    <main class="stage">
+        <model-viewer id="engine"
+            camera-controls auto-rotate shadow-intensity="1"
+            ar ar-modes="webxr scene-viewer quick-look"
+            crossorigin="anonymous" loading="eager">
+            <button slot="ar-button" style="display:none;"></button>
         </model-viewer>
 
-        <div class="overlay-ui">
-            <div class="product-card">
-                <h2 id="display-name" style="margin: 0 0 5px 0; font-size: 1.2rem;">Select Product</h2>
-                <p id="display-price" style="margin: 0 0 20px 0; color: var(--accent); font-weight: 600;">$0.00</p>
-                <button class="btn-primary" id="master-ar-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                    INITIALIZING AR...
+        <div class="ui-overlay">
+            <div class="info-card">
+                <h2 id="view-name" style="margin:0 0 5px 0; font-weight: 400;">Loading...</h2>
+                <div id="view-price" style="color: var(--accent); font-weight: 600; margin-bottom: 20px;">$0.00</div>
+                <button class="ar-button" id="ar-trigger">
+                    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    VIEW IN YOUR SPACE
                 </button>
             </div>
         </div>
     </main>
 
-    <div class="modal" id="qr-modal">
-        <div class="modal-content">
-            <h3>Desktop Detected</h3>
-            <p>Scan to view this in your room</p>
-            <img id="qr-image" style="width: 200px; height: 200px; margin: 20px;">
-            <button onclick="document.getElementById('qr-modal').style.display='none'" style="display:block; width:100%; padding:10px; border:none; background:#eee; border-radius:8px;">Dismiss</button>
+    <div id="error-modal">
+        <div class="modal-box">
+            <h3 id="err-title" style="color:var(--err)">AR Blocked</h3>
+            <p id="err-msg" style="color:#666; font-size:14px; margin-bottom:25px;"></p>
+            <div id="qr-wrap" style="display:none; margin-bottom:20px;">
+                <img id="qr-code" style="width:180px; height:180px;">
+                <p style="font-size:10px; color:#999;">Scan with mobile to bypass desktop restriction</p>
+            </div>
+            <button onclick="document.getElementById('error-modal').style.display='none'" style="width:100%; padding:15px; border:none; background:#eee; border-radius:10px;">Close</button>
         </div>
     </div>
 
 <script>
-    // 1. SYSTEM CONFIGURATION
+    // 1. CLOUDINARY HANDLER (Professional mapping)
     const CLOUD_NAME = "duhidqjmj";
-    const logger = document.getElementById('debug-log');
     
-    function log(msg) {
-        logger.innerText = `System: ${msg}`;
-        console.log(`[AR ENGINE] ${msg}`);
-    }
-
-    function formatCloudinary(url, isModel = false) {
-        if (!url) return "";
-        if (url.startsWith('http')) return url.replace('http://', 'https://');
-        const folder = isModel ? 'raw/upload' : 'image/upload';
-        return `https://res.cloudinary.com/${CLOUD_NAME}/${folder}/${url.replace('/media/', '')}`;
+    function resolveAsset(url, isModel = false) {
+        if (!url || url === "None") return "";
+        // If it's already a full HTTPS Cloudinary URL, keep it
+        if (url.includes('res.cloudinary.com')) return url.replace('http://', 'https://');
+        
+        // Clean the path for Cloudinary
+        const path = url.replace('/media/', '');
+        const type = isModel ? 'raw/upload' : 'image/upload';
+        return `https://res.cloudinary.com/${CLOUD_NAME}/${type}/${path}`;
     }
 
     // 2. DATA INJECTION
@@ -123,108 +119,105 @@
             id: "{{ p.id|escapejs }}",
             name: "{{ p.name|escapejs }}",
             price: "{{ p.price|escapejs }}",
-            glb: formatCloudinary("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}", true)
+            model: resolveAsset("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}", true)
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
-    // 3. ENGINE CORE
+    // 3. CORE SYSTEM
     const Engine = {
-        el: document.getElementById('main-engine'),
-        arBtn: document.getElementById('master-ar-btn'),
-        
-        async init() {
-            log("Checking Capabilities...");
-            this.checkARSupport();
+        viewer: document.getElementById('engine'),
+        log: document.getElementById('diagnostic-log'),
+
+        init() {
+            this.updateLog("Initializing AR Engine...");
             this.renderList();
-            if(inventory.length > 0) this.loadProduct(inventory[0].id);
+            if (inventory.length > 0) this.select(inventory[0].id);
             
-            this.arBtn.addEventListener('click', () => this.handleARRequest());
+            document.getElementById('ar-trigger').addEventListener('click', () => this.launchAR());
+
+            // Listen for load errors
+            this.viewer.addEventListener('error', (e) => {
+                this.updateLog(`MODEL LOAD ERROR: ${e.detail.type}`, true);
+            });
+
+            this.viewer.addEventListener('load', () => {
+                this.updateLog("Model successfully loaded into stage.");
+            });
         },
 
-        async checkARSupport() {
-            // Check for WebXR
-            if (navigator.xr) {
-                const supported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (supported) {
-                    log("WebXR Confirmed (Android/Chrome)");
-                    this.arBtn.innerText = "VIEW IN YOUR SPACE";
-                    return;
-                }
-            }
-            
-            // Check for iOS QuickLook
-            const a = document.createElement('a');
-            if (a.relList && a.relList.supports && a.relList.supports('ar')) {
-                log("QuickLook Confirmed (iOS)");
-                this.arBtn.innerText = "VIEW IN YOUR SPACE";
-                return;
-            }
-
-            log("No Native AR - Fallback Mode");
-            this.arBtn.innerText = "GET AR ACCESS";
+        updateLog(msg, isError = false) {
+            const timestamp = new Date().toLocaleTimeString().split(' ')[0];
+            const line = `<div class="${isError ? 'log-error' : ''}">[${timestamp}] ${msg}</div>`;
+            this.log.innerHTML = line + this.log.innerHTML;
         },
 
-        loadProduct(id) {
+        select(id) {
             const item = inventory.find(p => p.id == id);
-            log(`Loading: ${item.name}`);
-            this.el.src = item.glb;
-            document.getElementById('display-name').innerText = item.name;
-            document.getElementById('display-price').innerText = `$${item.price}`;
+            this.updateLog(`Selected: ${item.name}`);
             
-            document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
+            this.viewer.src = item.model;
+            document.getElementById('view-name').innerText = item.name;
+            document.getElementById('view-price').innerText = `$${item.price}`;
+            
+            document.querySelectorAll('.product-item').forEach(el => el.classList.remove('active'));
             document.querySelector(`[data-id="${id}"]`).classList.add('active');
         },
 
-        handleARRequest() {
-            // This is the "Professional" trigger logic
-            const isSecure = window.location.protocol === 'https:';
+        launchAR() {
+            this.updateLog("Launching Diagnostics...");
             
-            if (!isSecure && window.location.hostname !== 'localhost') {
-                alert("Security Error: AR requires an HTTPS connection.");
-                log("Blocked: Insecure Origin");
-                return;
+            // CHECK 1: HTTPS
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                return this.showError("Security Restriction", "AR requires an HTTPS connection. Browsers block camera access on insecure sites.");
             }
 
-            // Forced Activation
-            log("Attempting Launch...");
-            const nativeTrigger = document.getElementById('native-ar-trigger');
+            // CHECK 2: Browser Capability
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             
-            // Check if model-viewer thinks it can AR
-            if (this.el.canActivateAR) {
-                this.el.activateAR();
+            if (!isMobile) {
+                this.updateLog("Desktop detected. Generating QR.");
+                return this.showError("Desktop Mode", "Direct AR is only available on mobile devices. Use the QR code to continue.", true);
+            }
+
+            // CHECK 3: Handshake
+            if (this.viewer.canActivateAR) {
+                this.updateLog("Handshake successful. Opening AR...");
+                this.viewer.activateAR();
             } else {
-                // If it's not a mobile device, show QR
-                if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                    this.showQR();
-                } else {
-                    log("Handshake Failed. Check GLB MIME type.");
-                    // Fallback to slot trigger
-                    nativeTrigger.click();
-                }
+                this.updateLog("Hardware check failed.", true);
+                this.showError("Hardware Error", "Your device supports AR, but the 3D model couldn't be initialized for the environment. Ensure 'model/gltf-binary' is set in Cloudinary.");
             }
         },
 
-        showQR() {
-            const modal = document.getElementById('qr-modal');
-            const qr = document.getElementById('qr-image');
-            const url = encodeURIComponent(window.location.href);
-            qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}`;
-            modal.style.display = 'flex';
+        showError(title, msg, showQR = false) {
+            document.getElementById('err-title').innerText = title;
+            document.getElementById('err-msg').innerText = msg;
+            const qrWrap = document.getElementById('qr-wrap');
+            
+            if (showQR) {
+                const url = encodeURIComponent(window.location.href);
+                document.getElementById('qr-code').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}`;
+                qrWrap.style.display = 'block';
+            } else {
+                qrWrap.style.display = 'none';
+            }
+            
+            document.getElementById('error-modal').style.display = 'flex';
         },
 
         renderList() {
-            const container = document.getElementById('product-list');
+            const container = document.getElementById('p-list');
             container.innerHTML = inventory.map(p => `
-                <div class="item-row" data-id="${p.id}" onclick="Engine.loadProduct('${p.id}')">
-                    <div style="font-size:14px; font-weight:600;">${p.name}</div>
+                <div class="product-item" data-id="${p.id}" onclick="Engine.select('${p.id}')">
+                    <div style="font-weight:600;">${p.name}</div>
                     <div style="font-size:12px; color:#999;">$${p.price}</div>
                 </div>
             `).join('');
         }
     };
 
-    window.addEventListener('load', () => Engine.init());
+    window.onload = () => Engine.init();
 </script>
 </body>
 </html>
