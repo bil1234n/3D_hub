@@ -82,6 +82,7 @@ CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'your_cloud_name'),
     'API_KEY': os.environ.get('CLOUDINARY_API_KEY', 'your_api_key'),
     'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', 'your_api_secret'),
+    'SECURE': True, # Add this line
 }
 
 # Use Cloudinary for Media (3D Models and Images)
