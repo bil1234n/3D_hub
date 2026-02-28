@@ -140,6 +140,25 @@
 </div>
 
 <script>
+    // 1. YOUR CLOUDINARY CLOUD NAME (Update this if dhfyolanv is not correct)
+    const CLOUD_NAME = "dhfyolanv";
+    const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}`;
+
+    // Helper function to fix URLs on the fly
+    function fixUrl(url, type = 'image') {
+        if (!url) return "";
+        // If it's already a full URL, return it
+        if (url.startsWith('http')) return url;
+        
+        // Cloudinary needs /raw/ for .glb and /image/ for images
+        const folder = type === 'raw' ? 'raw/upload' : 'image/upload';
+        
+        // Remove the local '/media/' prefix if Django added it
+        const cleanPath = url.replace('/media/', '');
+        
+        return `${BASE_URL}/${folder}/${cleanPath}`;
+    }
+
     const inventory = [
         {% for p in products %}
         {
@@ -148,15 +167,18 @@
             category: "{{ p.category }}", 
             price: "{{ p.price }}",
             desc: "{{ p.description|escapejs }}",
-            file: "{{ p.model_3d.url }}",
+            // FIX: Wrap these in fixUrl()
+            file: fixUrl("{{ p.model_3d.url }}", 'raw'), 
             images: [
-                "{{ p.main_image.url }}",
-                {% for extra in p.gallery.all %}"{{ extra.image.url }}",{% endfor %}
+                fixUrl("{{ p.main_image.url }}", 'image'),
+                {% for extra in p.gallery.all %}fixUrl("{{ extra.image.url }}", 'image'),{% endfor %}
             ],
             currentImgIndex: 0
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
+
+    // --- REMAINDER OF YOUR FUNCTIONS STAY THE SAME ---
 
     function updateViewMode(id, mode) {
         const item = inventory.find(p => p.id === id);
@@ -206,6 +228,7 @@
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         
         if (isMobile) {
+            // This now uses the full HTTPS URL so it won't fail
             viewer.activateAR();
         } else {
             const qrModal = document.getElementById('qr-modal');
@@ -219,7 +242,10 @@
 
     function init() {
         const list = document.getElementById('ui-list');
-        if (inventory.length === 0) return;
+        if (inventory.length === 0) {
+            list.innerHTML = '<p style="padding:20px; color:#999;">No products found.</p>';
+            return;
+        }
 
         list.innerHTML = inventory.map((p) => `
             <div class="item-card" id="card-${p.id}" onclick="selectItem('${p.id}')">
@@ -243,6 +269,8 @@
         viewer.style.display = 'block';
         viewer.style.opacity = '1';
         overlay.style.display = 'none';
+        
+        // Apply the fixed URL
         viewer.src = item.file;
         
         document.getElementById('p-title').innerText = item.name;
