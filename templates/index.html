@@ -37,6 +37,7 @@
         model-viewer { 
             width: 100%; height: 100%; outline: none; 
             --poster-color: transparent;
+            touch-action: pan-y; /* Allows scrolling on mobile */
         }
 
         /* Image Gallery Overlay */
@@ -69,8 +70,9 @@
             backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
             padding: 40px; border-radius: 32px; border: 1px solid rgba(255,255,255,0.4);
             box-shadow: var(--shadow); z-index: 20; opacity: 0;
+            pointer-events: none;
         }
-        .glass-panel.show { transform: translate(-50%, 0); opacity: 1; }
+        .glass-panel.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
 
         .price { font-size: 2.2rem; font-weight: 200; margin: 15px 0; }
         .ar-btn { 
@@ -84,7 +86,9 @@
         #qr-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(12px);
+            opacity: 0; transition: opacity 0.3s ease;
         }
+        #qr-modal.active { display: flex; opacity: 1; }
         .qr-card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 380px; }
     </style>
 </head>
@@ -97,8 +101,8 @@
 
 <div class="main-stage">
     <div class="control-dock">
-        <button class="icon-btn" onclick="toggleSidebar()"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
-        <button class="icon-btn" onclick="toggleInfo()"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></button>
+        <button class="icon-btn" id="btn-toggle-sidebar"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <button class="icon-btn" id="btn-toggle-info"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></button>
     </div>
 
     <model-viewer id="viewer" 
@@ -106,7 +110,7 @@
         shadow-intensity="1.8" shadow-softness="1"
         environment-image="neutral" exposure="1.1"
         ar ar-modes="webxr scene-viewer quick-look" 
-        ar-scale="fixed" xr-environment>
+        ar-scale="auto" xr-environment crossorigin="anonymous">
         <button slot="ar-button" style="display:none;"></button>
     </model-viewer>
 
@@ -121,7 +125,7 @@
         <div class="price" id="p-price">$0.00</div>
         <p id="p-desc" style="color: #444; font-size: 0.95rem; line-height: 1.6; margin-bottom: 30px;"></p>
         
-        <button class="ar-btn" onclick="handleARTrigger()">
+        <button class="ar-btn" id="btn-trigger-ar">
             <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M7 11V7c0-2.21 1.79-4 4-4h2c2.21 0 4 1.79 4 4v4h2V7c0-3.31-2.69-6-6-6h-2c-3.31 0-6 2.69-6 6v4h2z"/></svg>
             ACTIVATE AUGMENTED REALITY
         </button>
@@ -135,157 +139,188 @@
         <div id="qr-container" style="margin:25px 0; border:1px solid #eee; padding:15px; border-radius:20px; display:inline-block;">
             <img id="qr-image" src="" style="width:200px; height:200px; border-radius:10px;">
         </div>
-        <button onclick="closeQR()" style="width:100%; padding:18px; border-radius:12px; border:none; background:#111; color:white; font-weight:600; cursor:pointer;">Close</button>
+        <button id="btn-close-qr" style="width:100%; padding:18px; border-radius:12px; border:none; background:#111; color:white; font-weight:600; cursor:pointer;">Close</button>
     </div>
 </div>
 
 <script>
-    // 1. YOUR CLOUDINARY CLOUD NAME (Update this if duhidqjmj is not correct)
-    const CLOUD_NAME = "duhidqjmj";
-    const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}`;
+    (() => {
+        // --- CLOUDINARY CONFIG ---
+        const CLOUD_NAME = "duhidqjmj";
+        const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}`;
 
-    // Helper function to fix URLs on the fly
-    function fixUrl(url, type = 'image') {
-        if (!url) return "";
-        // If it's already a full URL, return it
-        if (url.startsWith('http')) return url;
-        
-        // Cloudinary needs /raw/ for .glb and /image/ for images
-        const folder = type === 'raw' ? 'raw/upload' : 'image/upload';
-        
-        // Remove the local '/media/' prefix if Django added it
-        const cleanPath = url.replace('/media/', '');
-        
-        return `${BASE_URL}/${folder}/${cleanPath}`;
-    }
-
-    const inventory = [
-        {% for p in products %}
-        {
-            id: "{{ p.id }}",
-            name: "{{ p.name }}",
-            category: "{{ p.category }}", 
-            price: "{{ p.price }}",
-            desc: "{{ p.description|escapejs }}",
-            // FIX: Wrap these in fixUrl()
-            file: "{% if p.model_3d %}{{ p.model_3d.url }}{% endif %}".replace('http://', 'https://'),
-            images: [
-                "{{ p.main_image.url }}".replace('http://', 'https://'),
-                {% for extra in p.gallery.all %}"{{ extra.image.url }}".replace('http://', 'https://'),{% endfor %}
-            ],
-            currentImgIndex: 0
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    // --- REMAINDER OF YOUR FUNCTIONS STAY THE SAME ---
-
-    function updateViewMode(id, mode) {
-        const item = inventory.find(p => p.id === id);
-        const viewer = document.getElementById('viewer');
-        const overlay = document.getElementById('image-overlay');
-        
-        if (mode === 'image') {
-            viewer.style.opacity = '0';
-            setTimeout(() => {
-                viewer.style.display = 'none';
-                overlay.style.display = 'flex';
-                renderGallery(item);
-            }, 400);
-        } else {
-            overlay.style.display = 'none';
-            viewer.style.display = 'block';
-            setTimeout(() => viewer.style.opacity = '1', 10);
-        }
-    }
-
-    function renderGallery(item) {
-        const img = document.getElementById('static-img');
-        const controls = document.getElementById('gallery-controls');
-        img.src = item.images[item.currentImgIndex];
-        
-        controls.innerHTML = `
-            <button class="nav-btn" onclick="prevImg('${item.id}')">❮</button>
-            <span style="font-size:12px; font-weight:600;">${item.currentImgIndex + 1} / ${item.images.length}</span>
-            <button class="nav-btn" onclick="nextImg('${item.id}')">❯</button>
-        `;
-    }
-
-    function nextImg(id) {
-        const item = inventory.find(p => p.id === id);
-        item.currentImgIndex = (item.currentImgIndex + 1) % item.images.length;
-        renderGallery(item);
-    }
-
-    function prevImg(id) {
-        const item = inventory.find(p => p.id === id);
-        item.currentImgIndex = (item.currentImgIndex - 1 + item.images.length) % item.images.length;
-        renderGallery(item);
-    }
-
-    function handleARTrigger() {
-        const viewer = document.getElementById('viewer');
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-            // This now uses the full HTTPS URL so it won't fail
-            viewer.activateAR();
-        } else {
-            const qrModal = document.getElementById('qr-modal');
-            const qrImg = document.getElementById('qr-image');
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
-            qrModal.style.display = 'flex';
-        }
-    }
-
-    function closeQR() { document.getElementById('qr-modal').style.display = 'none'; }
-
-    function init() {
-        const list = document.getElementById('ui-list');
-        if (inventory.length === 0) {
-            list.innerHTML = '<p style="padding:20px; color:#999;">No products found.</p>';
-            return;
+        function fixUrl(url, type = 'image') {
+            if (!url) return "";
+            if (url.startsWith('http')) return url.replace('http://', 'https://');
+            
+            const folder = type === 'raw' ? 'raw/upload' : 'image/upload';
+            const cleanPath = url.replace('/media/', '');
+            return `${BASE_URL}/${folder}/${cleanPath}`;
         }
 
-        list.innerHTML = inventory.map((p) => `
-            <div class="item-card" id="card-${p.id}" onclick="selectItem('${p.id}')">
-                <span style="font-size: 9px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-weight:600;">${p.category}</span>
-                <span style="font-weight: 600; font-size: 0.95rem;">${p.name}</span>
-                <select class="view-selector" onclick="event.stopPropagation()" onchange="updateViewMode('${p.id}', this.value)">
-                    <option value="3d">Digital Twin (3D)</option>
-                    <option value="image">Photography</option>
-                </select>
-            </div>
-        `).join('');
-        
-        selectItem(inventory[0].id);
-    }
+        // --- DATA INJECTION ---
+        // Notice how fixUrl() actually wraps the Django variables now
+        const inventory = [
+            {% for p in products %}
+            {
+                id: "{{ p.id|escapejs }}",
+                name: "{{ p.name|escapejs }}",
+                category: "{{ p.category|escapejs }}", 
+                price: "{{ p.price|escapejs }}",
+                desc: "{{ p.description|escapejs }}",
+                file: fixUrl("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}", 'raw'),
+                images: [
+                    fixUrl("{{ p.main_image.url|escapejs }}", 'image'),
+                    {% for extra in p.gallery.all %}fixUrl("{{ extra.image.url|escapejs }}", 'image'),{% endfor %}
+                ],
+                currentImgIndex: 0
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
 
-    function selectItem(id) {
-        const item = inventory.find(p => p.id === id);
-        const viewer = document.getElementById('viewer');
-        const overlay = document.getElementById('image-overlay');
+        // --- DOM ELEMENTS ---
+        const DOM = {
+            viewer: document.getElementById('viewer'),
+            overlay: document.getElementById('image-overlay'),
+            staticImg: document.getElementById('static-img'),
+            galleryControls: document.getElementById('gallery-controls'),
+            list: document.getElementById('ui-list'),
+            infoPanel: document.getElementById('info-panel'),
+            sidebar: document.getElementById('sidebar'),
+            qrModal: document.getElementById('qr-modal'),
+            qrImage: document.getElementById('qr-image'),
+            pTitle: document.getElementById('p-title'),
+            pPrice: document.getElementById('p-price'),
+            pDesc: document.getElementById('p-desc')
+        };
 
-        viewer.style.display = 'block';
-        viewer.style.opacity = '1';
-        overlay.style.display = 'none';
-        
-        // Apply the fixed URL
-        viewer.src = item.file;
-        
-        document.getElementById('p-title').innerText = item.name;
-        document.getElementById('p-price').innerText = `$${item.price}`;
-        document.getElementById('p-desc').innerText = item.desc;
+        // --- CORE LOGIC ---
+        const App = {
+            init() {
+                if (!inventory || inventory.length === 0) {
+                    DOM.list.innerHTML = '<p style="padding:20px; color:#999;">No products found.</p>';
+                    return;
+                }
+                this.renderList();
+                this.bindEvents();
+                this.selectItem(inventory[0].id);
+            },
 
-        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('active'));
-        document.getElementById(`card-${id}`).classList.add('active');
-        document.getElementById('info-panel').classList.add('show');
-    }
+            renderList() {
+                DOM.list.innerHTML = inventory.map(p => `
+                    <div class="item-card" data-id="${p.id}">
+                        <span style="font-size: 9px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-weight:600;">${p.category}</span>
+                        <span style="font-weight: 600; font-size: 0.95rem; margin: 5px 0;">${p.name}</span>
+                        <select class="view-selector">
+                            <option value="3d">Digital Twin (3D)</option>
+                            <option value="image">Photography</option>
+                        </select>
+                    </div>
+                `).join('');
+            },
 
-    function toggleInfo() { document.getElementById('info-panel').classList.toggle('show'); }
-    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+            bindEvents() {
+                // Toggles
+                document.getElementById('btn-toggle-sidebar').addEventListener('click', () => DOM.sidebar.classList.toggle('hidden'));
+                document.getElementById('btn-toggle-info').addEventListener('click', () => DOM.infoPanel.classList.toggle('show'));
+                document.getElementById('btn-close-qr').addEventListener('click', () => DOM.qrModal.classList.remove('active'));
 
-    init();
+                // AR Trigger: Proper feature detection
+                document.getElementById('btn-trigger-ar').addEventListener('click', () => {
+                    if (DOM.viewer.canActivateAR) {
+                        DOM.viewer.activateAR();
+                    } else {
+                        const currentUrl = encodeURIComponent(window.location.href);
+                        DOM.qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${currentUrl}`;
+                        DOM.qrModal.classList.add('active');
+                    }
+                });
+
+                // List Events
+                DOM.list.addEventListener('click', (e) => {
+                    const card = e.target.closest('.item-card');
+                    if (!card || e.target.tagName === 'SELECT') return;
+                    this.selectItem(card.dataset.id);
+                });
+
+                DOM.list.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('view-selector')) {
+                        const card = e.target.closest('.item-card');
+                        this.updateViewMode(card.dataset.id, e.target.value);
+                    }
+                });
+
+                // Gallery Events
+                DOM.galleryControls.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.nav-btn');
+                    if (!btn) return;
+                    if (btn.dataset.dir === 'next') this.nextImg(btn.dataset.id);
+                    if (btn.dataset.dir === 'prev') this.prevImg(btn.dataset.id);
+                });
+            },
+
+            selectItem(id) {
+                const item = inventory.find(p => p.id === id);
+                if (!item) return;
+
+                DOM.overlay.style.display = 'none';
+                DOM.viewer.style.display = 'block';
+                DOM.viewer.src = item.file;
+                
+                DOM.pTitle.innerText = item.name;
+                DOM.pPrice.innerText = `$${item.price}`;
+                DOM.pDesc.innerText = item.desc;
+
+                document.querySelectorAll('.item-card').forEach(c => c.classList.remove('active'));
+                const activeCard = document.querySelector(`.item-card[data-id="${id}"]`);
+                if (activeCard) {
+                    activeCard.classList.add('active');
+                    activeCard.querySelector('.view-selector').value = '3d';
+                }
+                
+                DOM.infoPanel.classList.add('show');
+            },
+
+            updateViewMode(id, mode) {
+                const item = inventory.find(p => p.id === id);
+                if (mode === 'image') {
+                    DOM.viewer.style.opacity = '0';
+                    setTimeout(() => {
+                        DOM.viewer.style.display = 'none';
+                        DOM.overlay.style.display = 'flex';
+                        this.renderGallery(item);
+                    }, 400);
+                } else {
+                    DOM.overlay.style.display = 'none';
+                    DOM.viewer.style.display = 'block';
+                    setTimeout(() => DOM.viewer.style.opacity = '1', 10);
+                }
+            },
+
+            renderGallery(item) {
+                DOM.staticImg.src = item.images[item.currentImgIndex];
+                DOM.galleryControls.innerHTML = `
+                    <button class="nav-btn" data-id="${item.id}" data-dir="prev">❮</button>
+                    <span style="font-size:12px; font-weight:600;">${item.currentImgIndex + 1} / ${item.images.length}</span>
+                    <button class="nav-btn" data-id="${item.id}" data-dir="next">❯</button>
+                `;
+            },
+
+            nextImg(id) {
+                const item = inventory.find(p => p.id === id);
+                item.currentImgIndex = (item.currentImgIndex + 1) % item.images.length;
+                this.renderGallery(item);
+            },
+
+            prevImg(id) {
+                const item = inventory.find(p => p.id === id);
+                item.currentImgIndex = (item.currentImgIndex - 1 + item.images.length) % item.images.length;
+                this.renderGallery(item);
+            }
+        };
+
+        App.init();
+    })();
 </script>
 </body>
 </html>
