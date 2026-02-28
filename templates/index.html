@@ -168,10 +168,10 @@
             price: "{{ p.price }}",
             desc: "{{ p.description|escapejs }}",
             // FIX: Wrap these in fixUrl()
-            file: fixUrl("{{ p.model_3d.url }}", 'raw'), 
+            file: "{% if p.model_3d %}{{ p.model_3d.url }}{% endif %}".replace('http://', 'https://'),
             images: [
-                fixUrl("{{ p.main_image.url }}", 'image'),
-                {% for extra in p.gallery.all %}fixUrl("{{ extra.image.url }}", 'image'),{% endfor %}
+                "{{ p.main_image.url }}".replace('http://', 'https://'),
+                {% for extra in p.gallery.all %}"{{ extra.image.url }}".replace('http://', 'https://'),{% endfor %}
             ],
             currentImgIndex: 0
         }{% if not forloop.last %},{% endif %}
