@@ -3,157 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Luxé | Enterprise Multi-AR</title>
-    
+    <title>Luxé | Ultimate Immersive Experience</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #c5a059; --dark: #111; --sidebar-w: 300px; }
+        :root { --accent: #c5a059; --dark: #111; --glass: rgba(255, 255, 255, 0.88); --shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        * { box-sizing: border-box; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         body { margin: 0; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; background: #fff; }
 
-        /* Sidebar Navigation */
-        .sidebar { width: var(--sidebar-w); border-right: 1px solid #eee; display: flex; flex-direction: column; background: #fff; z-index: 100; }
-        .sidebar-header { padding: 30px; border-bottom: 1px solid #f5f5f5; text-align: center; letter-spacing: 4px; font-weight: 300; }
-        .product-list { flex: 1; overflow-y: auto; padding: 15px; }
+        /* Sidebar Architecture */
+        .sidebar { width: 340px; background: white; border-right: 1px solid #f0f0f0; display: flex; flex-direction: column; z-index: 100; position: relative; }
+        .sidebar.hidden { transform: translateX(-100%); margin-right: -340px; }
+        .sidebar-header { padding: 40px 30px; letter-spacing: 6px; font-weight: 200; font-size: 1.4rem; text-align: center; border-bottom: 1px solid #f9f9f9; }
         
-        .nav-item { 
-            padding: 20px; margin-bottom: 10px; border-radius: 12px; cursor: pointer; 
-            border: 1px solid #f0f0f0; transition: all 0.3s ease;
+        .product-list { flex: 1; overflow-y: auto; padding: 20px; }
+        .product-list::-webkit-scrollbar { width: 4px; }
+        .product-list::-webkit-scrollbar-thumb { background: #eee; border-radius: 10px; }
+
+        .item-card { 
+            padding: 20px; margin-bottom: 15px; cursor: pointer; border-radius: 20px;
+            display: flex; flex-direction: column; border: 1px solid transparent; background: #fcfcfc;
         }
-        .nav-item:hover { background: #fafafa; }
-        .nav-item.active { border-color: var(--accent); background: #fff; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .item-card.active { background: #fff; border-color: var(--accent); box-shadow: var(--shadow); }
 
-        /* Viewer Stage */
-        .viewer-stage { flex: 1; position: relative; background: #f9f9f9; }
-        model-viewer { width: 100%; height: 100%; }
+        .view-selector {
+            margin-top: 12px; padding: 10px; border-radius: 10px; border: 1px solid #eee;
+            font-size: 11px; text-transform: uppercase; letter-spacing: 1px; outline: none; background: white; cursor: pointer;
+        }
 
-        /* AR Floating Panel */
-        .ar-panel { 
+        /* Main Display Stage */
+        .main-stage { flex: 1; position: relative; background: radial-gradient(circle at center, #ffffff 0%, #f2f2f2 100%); }
+        model-viewer { width: 100%; height: 100%; outline: none; --poster-color: transparent; }
+
+        /* Overlays */
+        #image-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; align-items: center; justify-content: center; background: #fdfdfd; z-index: 5;
+        }
+        #image-overlay img { max-width: 80%; max-height: 80%; object-fit: contain; }
+
+        .gallery-nav {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: rgba(255,255,255,0.95); 
-            backdrop-filter: blur(10px); padding: 25px; border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1); border: 1px solid #fff;
+            display: flex; gap: 20px; align-items: center; background: white; padding: 10px 25px;
+            border-radius: 40px; box-shadow: var(--shadow); z-index: 10;
         }
-        
-        .btn-ar-launch {
-            width: 100%; padding: 18px; border: none; border-radius: 12px;
-            background: var(--dark); color: #fff; font-weight: 600; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; gap: 10px;
-        }
+        .nav-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--dark); }
 
-        @media (max-width: 768px) {
-            body { flex-direction: column; }
-            .sidebar { width: 100%; height: 200px; border-right: none; border-bottom: 1px solid #eee; }
-            .viewer-stage { flex: 1; }
+        .control-dock { position: absolute; top: 30px; right: 30px; display: flex; gap: 15px; z-index: 100; }
+        .icon-btn { 
+            width: 54px; height: 54px; background: white; border: none; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            box-shadow: var(--shadow); color: var(--dark);
         }
+        .icon-btn:hover { background: var(--dark); color: white; transform: scale(1.1); }
+
+        /* Information Panel */
+        .glass-panel { 
+            position: absolute; bottom: 30px; left: 50%; transform: translate(-50%, 150%);
+            width: 90%; max-width: 500px; background: var(--glass);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            padding: 40px; border-radius: 32px; border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: var(--shadow); z-index: 20; opacity: 0; pointer-events: none;
+        }
+        .glass-panel.show { transform: translate(-50%, 0); opacity: 1; pointer-events: all; }
+
+        .price { font-size: 2.2rem; font-weight: 200; margin: 15px 0; }
+        .ar-btn { 
+            width: 100%; background: var(--dark); color: white; border: none; padding: 20px;
+            border-radius: 16px; font-weight: 600; cursor: pointer; transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+        }
+        .ar-btn:hover { background: #000; letter-spacing: 1px; }
+
+        /* QR Code Modal */
+        #qr-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(12px);
+        }
+        .qr-card { background: white; padding: 40px; border-radius: 30px; text-align: center; max-width: 380px; }
     </style>
 </head>
 <body>
 
-    <aside class="sidebar">
-        <div class="sidebar-header">LUXÉ</div>
-        <div class="product-list" id="p-list">
-            </div>
-    </aside>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">LUXÉ</div>
+    <div class="product-list" id="ui-list"></div>
+</div>
 
-    <main class="viewer-stage">
-        <model-viewer id="main-view" camera-controls auto-rotate shadow-intensity="1" environment-image="neutral">
-        </model-viewer>
+<div class="main-stage">
+    <div class="control-dock">
+        <button class="icon-btn" onclick="toggleSidebar()"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <button class="icon-btn" onclick="toggleInfo()"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></button>
+    </div>
 
-        <div class="ar-panel">
-            <div style="margin-bottom: 15px;">
-                <h2 id="active-title" style="margin:0; font-size: 1.2rem;">Select Product</h2>
-                <p id="active-price" style="margin:0; color: var(--accent); font-weight: 600;">$0.00</p>
-            </div>
-            <button class="btn-ar-launch" id="master-ar-btn">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                VIEW IN AR
-            </button>
+    <model-viewer id="viewer" 
+        camera-controls auto-rotate 
+        shadow-intensity="1.8" shadow-softness="1"
+        environment-image="neutral" exposure="1.1">
+    </model-viewer>
+
+    <div id="image-overlay">
+        <img id="static-img" src="">
+        <div class="gallery-nav" id="gallery-controls"></div>
+    </div>
+
+    <div class="glass-panel" id="info-panel">
+        <span style="text-transform: uppercase; font-size: 11px; letter-spacing: 4px; color: var(--accent); font-weight: 600;">Product Intelligence</span>
+        <h2 id="p-title" style="margin:10px 0 0 0; font-weight: 400; font-size: 1.8rem;">Design</h2>
+        <div class="price" id="p-price">$0.00</div>
+        <p id="p-desc" style="color: #444; font-size: 0.95rem; line-height: 1.6; margin-bottom: 30px;"></p>
+        
+        <button class="ar-btn" onclick="handleProfessionalAR()">
+            <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            ACTIVATE AUGMENTED REALITY
+        </button>
+    </div>
+</div>
+
+<div id="qr-modal">
+    <div class="qr-card">
+        <h3 style="margin-top:0;">Mobile Augmented Reality</h3>
+        <p style="color:#666; font-size:0.9rem;">Scan this code with your phone to instantly place this design in your home environment.</p>
+        <div id="qr-container" style="margin:25px 0; border:1px solid #eee; padding:15px; border-radius:20px; display:inline-block;">
+            <img id="qr-image" src="" style="width:200px; height:200px;">
         </div>
-    </main>
+        <button onclick="closeQR()" style="width:100%; padding:18px; border-radius:12px; border:none; background:#111; color:white; font-weight:600; cursor:pointer;">Close</button>
+    </div>
+</div>
 
 <script>
-    // 1. DATA ARRAY FROM DJANGO
-    const products = [
+    const inventory = [
         {% for p in products %}
         {
-            id: "{{ p.id|escapejs }}",
-            name: "{{ p.name|escapejs }}",
-            price: "{{ p.price|escapejs }}",
-            // Correcting the Cloudinary URL on the fly
-            glb: "{{ p.model_3d.url|escapejs }}".replace('http://', 'https://'),
-            usdz: "{% if p.usdz_model %}{{ p.usdz_model.url|escapejs }}{% endif %}"
+            id: "{{ p.id }}",
+            name: "{{ p.name }}",
+            category: "{{ p.category }}", 
+            price: "{{ p.price }}",
+            desc: "{{ p.description|escapejs }}",
+            // Advanced: Clean URL to ensure HTTPS
+            file: "{{ p.model_3d.url }}".replace('http://', 'https://'),
+            usdz: "{% if p.usdz_model %}{{ p.usdz_model.url|escapejs }}{% endif %}",
+            images: [
+                "{{ p.main_image.url }}",
+                {% for extra in p.gallery.all %}"{{ extra.image.url }}",{% endfor %}
+            ],
+            currentImgIndex: 0
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
-    const State = {
-        activeProduct: null,
-        viewer: document.getElementById('main-view'),
+    let activeID = null;
+
+    function init() {
+        const list = document.getElementById('ui-list');
+        if (inventory.length === 0) return;
+
+        list.innerHTML = inventory.map((p) => `
+            <div class="item-card" id="card-${p.id}" onclick="selectItem('${p.id}')">
+                <span style="font-size: 9px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-weight:600;">${p.category}</span>
+                <span style="font-weight: 600; font-size: 0.95rem;">${p.name}</span>
+                <select class="view-selector" onclick="event.stopPropagation()" onchange="updateViewMode('${p.id}', this.value)">
+                    <option value="3d">Digital Twin (3D)</option>
+                    <option value="image">Photography</option>
+                </select>
+            </div>
+        `).join('');
         
-        init() {
-            this.renderSidebar();
-            if (products.length > 0) this.switchProduct(products[0].id);
-            
-            document.getElementById('master-ar-btn').addEventListener('click', () => this.launchNativeAR());
-        },
+        selectItem(inventory[0].id);
+    }
 
-        renderSidebar() {
-            const list = document.getElementById('p-list');
-            list.innerHTML = products.map(p => `
-                <div class="nav-item" id="nav-${p.id}" onclick="State.switchProduct('${p.id}')">
-                    <div style="font-weight:600;">${p.name}</div>
-                    <div style="font-size: 0.8rem; opacity: 0.6;">$${p.price}</div>
-                </div>
-            `).join('');
-        },
+    function selectItem(id) {
+        activeID = id;
+        const item = inventory.find(p => p.id === id);
+        const viewer = document.getElementById('viewer');
+        const overlay = document.getElementById('image-overlay');
 
-        switchProduct(id) {
-            const product = products.find(p => p.id == id);
-            this.activeProduct = product;
+        viewer.style.display = 'block';
+        viewer.style.opacity = '1';
+        overlay.style.display = 'none';
+        viewer.src = item.file;
+        
+        document.getElementById('p-title').innerText = item.name;
+        document.getElementById('p-price').innerText = `$${item.price}`;
+        document.getElementById('p-desc').innerText = item.desc;
 
-            // Update UI
-            document.getElementById('active-title').innerText = product.name;
-            document.getElementById('active-price').innerText = `$${product.price}`;
-            
-            // Update Web Viewer
-            this.viewer.src = product.glb;
+        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(`card-${id}`).classList.add('active');
+        document.getElementById('info-panel').classList.add('show');
+    }
 
-            // Update active state in sidebar
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(`nav-${id}`).classList.add('active');
-        },
+    // --- PROFESSIONAL NATIVE AR ROUTER ---
+    function handleProfessionalAR() {
+        const item = inventory.find(p => p.id === activeID);
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const encodedUrl = encodeURIComponent(item.file);
+        const title = encodeURIComponent(item.name);
 
-        launchNativeAR() {
-            if (!this.activeProduct) return;
-
-            const url = this.activeProduct.glb;
-            const title = encodeURIComponent(this.activeProduct.name);
-            const isAndroid = /android/i.test(navigator.userAgent);
-            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-            // --- ANDROID INTENT (Bypasses Browser Security) ---
-            if (isAndroid) {
-                const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${url}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;`;
-                window.location.href = intent;
-            } 
-            // --- iOS QUICK LOOK (Native OS Handoff) ---
-            else if (isiOS) {
-                const anchor = document.createElement('a');
-                anchor.setAttribute('rel', 'ar');
-                anchor.appendChild(document.createElement('img'));
-                // Use USDZ if available, otherwise fallback to GLB (iOS 13+ supports GLB)
-                anchor.setAttribute('href', this.activeProduct.usdz || url);
-                anchor.click();
-            } 
-            else {
-                alert("Please use a mobile device to view in Augmented Reality.");
-            }
+        // 1. Android Native Intent (Scene Viewer)
+        if (/android/i.test(userAgent)) {
+            const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${encodedUrl}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;`;
+            window.location.href = intent;
+        } 
+        // 2. iOS Native Quick Look
+        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+            const anchor = document.createElement('a');
+            anchor.setAttribute('rel', 'ar');
+            anchor.appendChild(document.createElement('img'));
+            anchor.setAttribute('href', item.usdz || item.file);
+            anchor.click();
+        } 
+        // 3. Desktop Fallback (QR Code)
+        else {
+            const qrModal = document.getElementById('qr-modal');
+            const qrImg = document.getElementById('qr-image');
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
+            qrModal.style.display = 'flex';
         }
-    };
+    }
 
-    window.onload = () => State.init();
+    // Your existing Gallery & UI functions
+    function updateViewMode(id, mode) {
+        const item = inventory.find(p => p.id === id);
+        const viewer = document.getElementById('viewer');
+        const overlay = document.getElementById('image-overlay');
+        if (mode === 'image') {
+            viewer.style.opacity = '0';
+            setTimeout(() => { viewer.style.display = 'none'; overlay.style.display = 'flex'; renderGallery(item); }, 400);
+        } else {
+            overlay.style.display = 'none'; viewer.style.display = 'block';
+            setTimeout(() => viewer.style.opacity = '1', 10);
+        }
+    }
+
+    function renderGallery(item) {
+        const img = document.getElementById('static-img');
+        const controls = document.getElementById('gallery-controls');
+        img.src = item.images[item.currentImgIndex];
+        controls.innerHTML = `<button class="nav-btn" onclick="prevImg('${item.id}')">❮</button>
+            <span style="font-size:12px; font-weight:600;">${item.currentImgIndex + 1} / ${item.images.length}</span>
+            <button class="nav-btn" onclick="nextImg('${item.id}')">❯</button>`;
+    }
+
+    function nextImg(id) {
+        const item = inventory.find(p => p.id === id);
+        item.currentImgIndex = (item.currentImgIndex + 1) % item.images.length;
+        renderGallery(item);
+    }
+
+    function prevImg(id) {
+        const item = inventory.find(p => p.id === id);
+        item.currentImgIndex = (item.currentImgIndex - 1 + item.images.length) % item.images.length;
+        renderGallery(item);
+    }
+
+    function closeQR() { document.getElementById('qr-modal').style.display = 'none'; }
+    function toggleInfo() { document.getElementById('info-panel').classList.toggle('show'); }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+
+    init();
 </script>
 </body>
 </html>
