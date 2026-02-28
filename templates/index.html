@@ -3,192 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Luxé | Enterprise AR Engine</title>
+    <title>Luxé | Professional AR Engine</title>
+    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
-        :root { --accent: #c5a059; --dark: #111; --glass: rgba(255, 255, 255, 0.9); --shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        * { box-sizing: border-box; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        body { margin: 0; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; background: #fff; color: var(--dark); }
+        :root { --accent: #c5a059; --dark: #0a0a0a; --glass: rgba(255, 255, 255, 0.95); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; height: 100vh; display: flex; overflow: hidden; }
 
-        /* Layout Architecture */
-        .sidebar { width: 340px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; z-index: 100; transition: transform 0.5s ease; }
-        .sidebar.hidden { transform: translateX(-100%); margin-right: -340px; }
-        .sidebar-header { padding: 40px 30px; letter-spacing: 6px; font-weight: 200; font-size: 1.4rem; text-align: center; border-bottom: 1px solid #f9f9f9; }
+        /* Sidebar Control */
+        .sidebar { width: 320px; border-right: 1px solid #eee; display: flex; flex-direction: column; background: #fff; z-index: 10; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar.collapsed { transform: translateX(-100%); margin-right: -320px; }
+
+        /* Main Viewport */
+        .viewport { flex: 1; position: relative; background: #f9f9f9; }
+        model-viewer { width: 100%; height: 100%; background-color: #f9f9f9; }
+
+        /* Professional UI Components */
+        .overlay-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; z-index: 50; }
         
-        .product-list { flex: 1; overflow-y: auto; padding: 20px; }
-        .item-card { 
-            padding: 20px; margin-bottom: 15px; cursor: pointer; border-radius: 20px;
-            background: #f8f8f8; border: 1px solid transparent;
-        }
-        .item-card.active { background: #fff; border-color: var(--accent); box-shadow: var(--shadow); }
-
-        .view-selector {
-            width: 100%; margin-top: 12px; padding: 10px; border-radius: 10px; border: 1px solid #ddd;
-            font-size: 11px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
+        .product-card { 
+            background: var(--glass); backdrop-filter: blur(15px); padding: 25px; 
+            border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border: 1px solid #fff;
         }
 
-        /* Stage Area */
-        .main-stage { flex: 1; position: relative; background: radial-gradient(circle at center, #ffffff 0%, #f2f2f2 100%); }
-        model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
-
-        /* UI Overlays */
-        .control-dock { position: absolute; top: 30px; right: 30px; display: flex; gap: 15px; z-index: 100; }
-        .icon-btn { 
-            width: 50px; height: 50px; background: white; border: none; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow);
-        }
-        .icon-btn:hover { background: var(--dark); color: white; }
-
-        .glass-panel { 
-            position: absolute; bottom: 30px; left: 50%; transform: translate(-50%, 40px);
-            width: 90%; max-width: 480px; background: var(--glass); backdrop-filter: blur(20px);
-            padding: 35px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.5);
-            box-shadow: var(--shadow); z-index: 20; opacity: 0; pointer-events: none;
-        }
-        .glass-panel.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-
-        .ar-btn { 
-            width: 100%; background: var(--dark); color: white; border: none; padding: 20px;
-            border-radius: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+        .btn-primary { 
+            width: 100%; padding: 18px; border: none; border-radius: 14px; 
+            background: var(--dark); color: #fff; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s;
         }
 
-        /* Modal Logic */
-        #qr-modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-            z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(10px);
+        /* Diagnostic Tools (Hide in Production) */
+        #debug-log { 
+            position: absolute; top: 10px; left: 10px; font-size: 10px; 
+            background: rgba(0,0,0,0.7); color: #0f0; padding: 10px; border-radius: 5px; 
+            pointer-events: none; z-index: 1000; max-width: 200px;
         }
-        .qr-card { background: white; padding: 40px; border-radius: 30px; text-align: center; width: 340px; }
-        
-        #image-overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: #fff; z-index: 5; }
-        #image-overlay img { max-width: 80%; max-height: 80%; object-fit: contain; }
+
+        /* Modal */
+        .modal { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+            z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px); 
+        }
+        .modal-content { background: #fff; padding: 40px; border-radius: 30px; text-align: center; }
+
+        .item-row { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; }
+        .item-row:hover { background: #f5f5f5; }
+        .item-row.active { border-left: 4px solid var(--accent); background: #fffaf0; }
     </style>
 </head>
 <body>
 
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-header">LUXÉ</div>
-    <div class="product-list" id="ui-list"></div>
-</div>
+    <div id="debug-log">System: Initializing...</div>
 
-<div class="main-stage">
-    <div class="control-dock">
-        <button class="icon-btn" id="toggleSide"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
-        <button class="icon-btn" id="toggleInfo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>
+    <aside class="sidebar" id="sidebar">
+        <div style="padding: 30px; border-bottom: 1px solid #eee; font-weight: 600; letter-spacing: 2px;">COLLECTION</div>
+        <div id="product-list" style="overflow-y: auto; flex: 1;"></div>
+    </aside>
+
+    <main class="viewport">
+        <model-viewer id="main-engine"
+            loading="eager"
+            camera-controls
+            auto-rotate
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            ar-placement="floor"
+            shadow-intensity="1.5"
+            environment-image="neutral"
+            crossorigin="anonymous">
+            
+            <button slot="ar-button" id="native-ar-trigger" style="display:none;"></button>
+        </model-viewer>
+
+        <div class="overlay-ui">
+            <div class="product-card">
+                <h2 id="display-name" style="margin: 0 0 5px 0; font-size: 1.2rem;">Select Product</h2>
+                <p id="display-price" style="margin: 0 0 20px 0; color: var(--accent); font-weight: 600;">$0.00</p>
+                <button class="btn-primary" id="master-ar-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    INITIALIZING AR...
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal" id="qr-modal">
+        <div class="modal-content">
+            <h3>Desktop Detected</h3>
+            <p>Scan to view this in your room</p>
+            <img id="qr-image" style="width: 200px; height: 200px; margin: 20px;">
+            <button onclick="document.getElementById('qr-modal').style.display='none'" style="display:block; width:100%; padding:10px; border:none; background:#eee; border-radius:8px;">Dismiss</button>
+        </div>
     </div>
-
-    <model-viewer id="viewer" 
-        camera-controls auto-rotate shadow-intensity="2" 
-        environment-image="neutral" exposure="1"
-        ar ar-modes="webxr scene-viewer quick-look" 
-        ar-scale="auto" loading="eager" crossorigin="anonymous">
-        <button slot="ar-button" id="hidden-ar-button" style="display:none;"></button>
-    </model-viewer>
-
-    <div id="image-overlay"><img id="gallery-img" src=""></div>
-
-    <div class="glass-panel" id="info-panel">
-        <h2 id="p-title">Product</h2>
-        <div id="p-price" style="font-size: 1.5rem; margin-bottom: 10px;">$0.00</div>
-        <p id="p-desc" style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 25px;"></p>
-        <button class="ar-btn" id="launch-ar">
-            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M7 11V7c0-2.21 1.79-4 4-4h2c2.21 0 4 1.79 4 4v4h2V7c0-3.31-2.69-6-6-6h-2c-3.31 0-6 2.69-6 6v4h2z"/></svg>
-            VIEW IN YOUR SPACE
-        </button>
-    </div>
-</div>
-
-<div id="qr-modal">
-    <div class="qr-card">
-        <h3>View in AR</h3>
-        <p style="font-size: 0.85rem; color: #666;">Scan with your mobile device to place this item in your room.</p>
-        <img id="qr-code" style="width: 200px; height: 200px; margin: 20px 0;">
-        <button id="close-qr" style="width:100%; padding:15px; border:none; background:#eee; border-radius:10px; cursor:pointer;">Close</button>
-    </div>
-</div>
 
 <script>
+    // 1. SYSTEM CONFIGURATION
     const CLOUD_NAME = "duhidqjmj";
+    const logger = document.getElementById('debug-log');
     
-    // Crucial: Cloudinary delivery logic
-    function getCloudinaryUrl(path, isModel = false) {
-        if (!path) return "";
-        if (path.startsWith('http')) return path.replace('http://', 'https://');
-        const type = isModel ? 'raw/upload' : 'image/upload';
-        const cleanPath = path.replace('/media/', '');
-        return `https://res.cloudinary.com/${CLOUD_NAME}/${type}/${cleanPath}`;
+    function log(msg) {
+        logger.innerText = `System: ${msg}`;
+        console.log(`[AR ENGINE] ${msg}`);
     }
 
+    function formatCloudinary(url, isModel = false) {
+        if (!url) return "";
+        if (url.startsWith('http')) return url.replace('http://', 'https://');
+        const folder = isModel ? 'raw/upload' : 'image/upload';
+        return `https://res.cloudinary.com/${CLOUD_NAME}/${folder}/${url.replace('/media/', '')}`;
+    }
+
+    // 2. DATA INJECTION
     const inventory = [
         {% for p in products %}
         {
             id: "{{ p.id|escapejs }}",
             name: "{{ p.name|escapejs }}",
             price: "{{ p.price|escapejs }}",
-            desc: "{{ p.description|escapejs }}",
-            category: "{{ p.category|escapejs }}",
-            model: getCloudinaryUrl("{{ p.model_3d.url|escapejs }}", true),
-            thumb: getCloudinaryUrl("{{ p.main_image.url|escapejs }}")
+            glb: formatCloudinary("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}", true)
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
-    const viewer = document.getElementById('viewer');
-    const infoPanel = document.getElementById('info-panel');
-    const qrModal = document.getElementById('qr-modal');
-
-    // AR Engine Logic
-    function triggerAR() {
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // 3. ENGINE CORE
+    const Engine = {
+        el: document.getElementById('main-engine'),
+        arBtn: document.getElementById('master-ar-btn'),
         
-        // Attempt 1: Direct activation via component
-        if (viewer.canActivateAR) {
-            viewer.activateAR();
-        } 
-        // Attempt 2: Intent-based trigger for Android/iOS if detection is sluggish
-        else if (isMobile) {
-            const arButton = document.getElementById('hidden-ar-button');
-            arButton.click();
-        } 
-        // Attempt 3: Desktop Fallback
-        else {
-            const currentUrl = encodeURIComponent(window.location.href);
-            document.getElementById('qr-code').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${currentUrl}`;
-            qrModal.style.display = 'flex';
+        async init() {
+            log("Checking Capabilities...");
+            this.checkARSupport();
+            this.renderList();
+            if(inventory.length > 0) this.loadProduct(inventory[0].id);
+            
+            this.arBtn.addEventListener('click', () => this.handleARRequest());
+        },
+
+        async checkARSupport() {
+            // Check for WebXR
+            if (navigator.xr) {
+                const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (supported) {
+                    log("WebXR Confirmed (Android/Chrome)");
+                    this.arBtn.innerText = "VIEW IN YOUR SPACE";
+                    return;
+                }
+            }
+            
+            // Check for iOS QuickLook
+            const a = document.createElement('a');
+            if (a.relList && a.relList.supports && a.relList.supports('ar')) {
+                log("QuickLook Confirmed (iOS)");
+                this.arBtn.innerText = "VIEW IN YOUR SPACE";
+                return;
+            }
+
+            log("No Native AR - Fallback Mode");
+            this.arBtn.innerText = "GET AR ACCESS";
+        },
+
+        loadProduct(id) {
+            const item = inventory.find(p => p.id == id);
+            log(`Loading: ${item.name}`);
+            this.el.src = item.glb;
+            document.getElementById('display-name').innerText = item.name;
+            document.getElementById('display-price').innerText = `$${item.price}`;
+            
+            document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
+            document.querySelector(`[data-id="${id}"]`).classList.add('active');
+        },
+
+        handleARRequest() {
+            // This is the "Professional" trigger logic
+            const isSecure = window.location.protocol === 'https:';
+            
+            if (!isSecure && window.location.hostname !== 'localhost') {
+                alert("Security Error: AR requires an HTTPS connection.");
+                log("Blocked: Insecure Origin");
+                return;
+            }
+
+            // Forced Activation
+            log("Attempting Launch...");
+            const nativeTrigger = document.getElementById('native-ar-trigger');
+            
+            // Check if model-viewer thinks it can AR
+            if (this.el.canActivateAR) {
+                this.el.activateAR();
+            } else {
+                // If it's not a mobile device, show QR
+                if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    this.showQR();
+                } else {
+                    log("Handshake Failed. Check GLB MIME type.");
+                    // Fallback to slot trigger
+                    nativeTrigger.click();
+                }
+            }
+        },
+
+        showQR() {
+            const modal = document.getElementById('qr-modal');
+            const qr = document.getElementById('qr-image');
+            const url = encodeURIComponent(window.location.href);
+            qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}`;
+            modal.style.display = 'flex';
+        },
+
+        renderList() {
+            const container = document.getElementById('product-list');
+            container.innerHTML = inventory.map(p => `
+                <div class="item-row" data-id="${p.id}" onclick="Engine.loadProduct('${p.id}')">
+                    <div style="font-size:14px; font-weight:600;">${p.name}</div>
+                    <div style="font-size:12px; color:#999;">$${p.price}</div>
+                </div>
+            `).join('');
         }
-    }
+    };
 
-    function selectProduct(id) {
-        const item = inventory.find(p => p.id == id);
-        if (!item) return;
-
-        viewer.src = item.model;
-        document.getElementById('p-title').innerText = item.name;
-        document.getElementById('p-price').innerText = `$${item.price}`;
-        document.getElementById('p-desc').innerText = item.desc;
-        
-        infoPanel.classList.add('show');
-        document.querySelectorAll('.item-card').forEach(c => c.classList.remove('active'));
-        document.querySelector(`[data-id="${id}"]`).classList.add('active');
-    }
-
-    // Initialize
-    const listContainer = document.getElementById('ui-list');
-    listContainer.innerHTML = inventory.map(p => `
-        <div class="item-card" data-id="${p.id}" onclick="selectProduct('${p.id}')">
-            <span style="font-size:10px; color:var(--accent); font-weight:600;">${p.category}</span>
-            <div style="font-weight:600;">${p.name}</div>
-        </div>
-    `).join('');
-
-    // Event Listeners
-    document.getElementById('launch-ar').onclick = triggerAR;
-    document.getElementById('close-qr').onclick = () => qrModal.style.display = 'none';
-    document.getElementById('toggleSide').onclick = () => document.getElementById('sidebar').classList.toggle('hidden');
-    document.getElementById('toggleInfo').onclick = () => infoPanel.classList.toggle('show');
-
-    if (inventory.length > 0) selectProduct(inventory[0].id);
+    window.addEventListener('load', () => Engine.init());
 </script>
-
 </body>
 </html>
