@@ -75,10 +75,19 @@
     
     // Cloudinary path cleaner
     function resolveAsset(url) {
-        if (!url || url === "None") return "";
-        let path = url.replace('/media/', '').split('?')[0]; // Strip URL params
-        if (path.includes('res.cloudinary.com')) return path.replace('http://', 'https://');
-        return `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${path}`;
+        if (!url || url === "None" || url === "") return "";
+    
+        // 1. Extract just the filename (e.g., "sofa.glb")
+        // This removes "/media/", "http://...", and any version numbers like "v12345/"
+        let parts = url.split('/');
+        let fileName = parts[parts.length - 1]; 
+    
+        // 2. Rebuild the clean Enterprise URL
+        // We use 'raw' because .glb is a binary file
+        const cleanUrl = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${fileName}`;
+        
+        console.log("SYSTEM ATTEMPTING FETCH:", cleanUrl);
+        return cleanUrl;
     }
 
     const inventory = [
