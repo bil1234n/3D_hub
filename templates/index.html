@@ -3,207 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Luxé | Enterprise AR Engine (Blob Proxy)</title>
+    <title>Luxé | Native AR Router</title>
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
     <style>
-        :root { --accent: #c5a059; --dark: #0f0f0f; --err: #ff4d4d; --glass: rgba(255, 255, 255, 0.98); }
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; height: 100vh; display: flex; overflow: hidden; }
+        :root { --accent: #c5a059; --dark: #111; --bg: #f4f4f4; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: #fff; height: 100vh; display: flex; flex-direction: column; }
 
-        .sidebar { width: 320px; border-right: 1px solid #eee; display: flex; flex-direction: column; background: #fff; z-index: 100; }
-        .sidebar-header { padding: 40px 25px; border-bottom: 1px solid #f5f5f5; }
-        .sidebar-header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 5px; font-weight: 300; }
-        .product-list { flex: 1; overflow-y: auto; padding: 15px; }
-        .product-item { padding: 20px; margin-bottom: 10px; border-radius: 15px; cursor: pointer; background: #fcfcfc; border: 1px solid #f0f0f0; transition: 0.3s; }
-        .product-item.active { border-color: var(--accent); background: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        /* Clean Header */
+        header { padding: 20px; text-align: center; border-bottom: 1px solid #eee; background: #fff; z-index: 10; }
+        header h1 { margin: 0; font-size: 1.2rem; letter-spacing: 4px; font-weight: 300; }
 
-        .stage { flex: 1; position: relative; background: #f9f9f9; }
-        model-viewer { width: 100%; height: 100%; background: #f9f9f9; --poster-color: transparent; }
+        /* Web 3D Preview */
+        .preview-container { flex: 1; position: relative; background: var(--bg); }
+        model-viewer { width: 100%; height: 100%; outline: none; }
 
-        .ui-overlay { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; z-index: 200; }
-        .info-card { background: var(--glass); padding: 30px; border-radius: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05); }
+        /* Native AR Control Panel */
+        .control-panel { 
+            background: #fff; padding: 30px; border-top: 1px solid #eee; 
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.03); z-index: 10;
+        }
         
-        .ar-button { 
-            width: 100%; padding: 20px; border: none; border-radius: 15px; 
-            background: var(--dark); color: #fff; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 12px; transition: 0.2s;
-        }
-        .ar-button:disabled { background: #ccc; cursor: not-allowed; }
+        .product-meta { margin-bottom: 20px; }
+        .product-title { font-size: 1.5rem; font-weight: 600; margin: 0 0 5px 0; }
+        .product-price { color: var(--accent); font-size: 1.1rem; font-weight: 600; margin: 0; }
 
-        #diagnostic-log {
-            position: absolute; top: 20px; left: 20px; width: 300px; max-height: 200px; overflow-y: auto;
-            background: rgba(0,0,0,0.85); color: #00ff00; font-family: monospace; 
-            font-size: 11px; padding: 15px; border-radius: 10px; z-index: 500; pointer-events: none;
+        /* The Deep Link Button */
+        .btn-native-ar {
+            width: 100%; padding: 20px; border-radius: 12px; border: none;
+            background: var(--dark); color: #fff; font-size: 1rem; font-weight: 600;
+            cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px;
         }
-        .log-error { color: var(--err); font-weight: bold; }
-        .log-warn { color: #ffd700; }
+        .btn-native-ar:hover { background: #000; }
+
+        /* Desktop Fallback */
+        .desktop-warning {
+            display: none; padding: 15px; background: #fff3cd; color: #856404;
+            border-radius: 8px; margin-top: 15px; font-size: 0.9rem; text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <div id="diagnostic-log">SYSTEM IDLE...</div>
+    <header>
+        <h1>LUXÉ</h1>
+    </header>
 
-    <aside class="sidebar">
-        <div class="sidebar-header"><h1>LUXÉ</h1></div>
-        <div class="product-list" id="p-list"></div>
-    </aside>
-
-    <main class="stage">
-        <model-viewer id="engine"
-            camera-controls auto-rotate shadow-intensity="1"
-            ar ar-modes="webxr scene-viewer quick-look"
-            crossorigin="anonymous" loading="eager">
+    <div class="preview-container">
+        <model-viewer id="web-preview" 
+            camera-controls 
+            auto-rotate 
+            shadow-intensity="1"
+            environment-image="neutral">
         </model-viewer>
+    </div>
 
-        <div class="ui-overlay">
-            <div class="info-card">
-                <h2 id="view-name" style="margin:0 0 5px 0; font-weight: 400;">Loading...</h2>
-                <div id="view-price" style="color: var(--accent); font-weight: 600; margin-bottom: 20px;">$0.00</div>
-                <button class="ar-button" id="ar-trigger">
-                    <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                    <span id="btn-text">VIEW IN YOUR SPACE</span>
-                </button>
-            </div>
+    <div class="control-panel">
+        <div class="product-meta">
+            <h2 class="product-title" id="p-title">Loading...</h2>
+            <p class="product-price" id="p-price">$0.00</p>
         </div>
-    </main>
+        
+        <button class="btn-native-ar" id="btn-ar">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            OPEN NATIVE AR
+        </button>
+        
+        <div class="desktop-warning" id="desktop-msg">
+            AR is only available on iOS and Android devices.
+        </div>
+    </div>
 
 <script>
-    const CLOUD_NAME = "duhidqjmj";
-    
-    // Cloudinary path cleaner
-    function resolveAsset(url) {
-        if (!url || url === "None" || url === "") return "";
-    
-        // 1. Extract just the filename (e.g., "sofa.glb")
-        // This removes "/media/", "http://...", and any version numbers like "v12345/"
-        let parts = url.split('/');
-        let fileName = parts[parts.length - 1]; 
-    
-        // 2. Rebuild the clean Enterprise URL
-        // We use 'raw' because .glb is a binary file
-        const cleanUrl = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${fileName}`;
-        
-        console.log("SYSTEM ATTEMPTING FETCH:", cleanUrl);
-        return cleanUrl;
-    }
-
-    const inventory = [
-        {% for p in products %}
-        {
-            id: "{{ p.id|escapejs }}",
-            name: "{{ p.name|escapejs }}",
-            price: "{{ p.price|escapejs }}",
-            raw_url: resolveAsset("{% if p.model_3d %}{{ p.model_3d.url|escapejs }}{% endif %}")
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    const Engine = {
-        viewer: document.getElementById('engine'),
-        log: document.getElementById('diagnostic-log'),
-        btn: document.getElementById('ar-trigger'),
-        btnText: document.getElementById('btn-text'),
-        currentBlobUrl: null,
-
-        init() {
-            this.updateLog("Initializing Pro AR Engine...");
-            this.renderList();
-            if (inventory.length > 0) this.select(inventory[0].id);
-            
-            this.btn.addEventListener('click', () => this.launchAR());
-        },
-
-        updateLog(msg, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString().split(' ')[0];
-            let classStr = '';
-            if(type === 'error') classStr = 'log-error';
-            if(type === 'warn') classStr = 'log-warn';
-            
-            const line = `<div class="${classStr}">[${timestamp}] ${msg}</div>`;
-            this.log.innerHTML = line + this.log.innerHTML;
-        },
-
-        // --- THE PROFESSIONAL BLOB PROXY ---
-        async fetchAndFixMimeType(url) {
-            this.updateLog(`Downloading asset into memory...`, 'warn');
-            this.btn.disabled = true;
-            this.btnText.innerText = "PROCESSING 3D DATA...";
-
-            try {
-                // Fetch the bad file from Cloudinary
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                const arrayBuffer = await response.arrayBuffer();
-                
-                // FORCE THE CORRECT MIME TYPE HERE
-                const blob = new Blob([arrayBuffer], { type: 'model/gltf-binary' });
-                
-                // Clear out old memory to prevent browser crashes
-                if (this.currentBlobUrl) URL.revokeObjectURL(this.currentBlobUrl);
-                
-                this.currentBlobUrl = URL.createObjectURL(blob);
-                
-                this.updateLog("MIME Type patched successfully. Blob generated.");
-                return this.currentBlobUrl;
-
-            } catch (err) {
-                this.updateLog(`CORS/Fetch Error: ${err.message}`, 'error');
-                // Fallback to raw URL if fetch fails due to Cloudinary CORS settings
-                return url; 
-            } finally {
-                this.btn.disabled = false;
-                this.btnText.innerText = "VIEW IN YOUR SPACE";
-            }
-        },
-
-        async select(id) {
-            const item = inventory.find(p => p.id == id);
-            this.updateLog(`Selected: ${item.name}`);
-            
-            document.getElementById('view-name').innerText = item.name;
-            document.getElementById('view-price').innerText = `$${item.price}`;
-            document.querySelectorAll('.product-item').forEach(el => el.classList.remove('active'));
-            document.querySelector(`[data-id="${id}"]`).classList.add('active');
-
-            // Pass through the Proxy
-            const safeUrl = await this.fetchAndFixMimeType(item.raw_url);
-            this.viewer.src = safeUrl;
-        },
-
-        launchAR() {
-            this.updateLog("Executing AR Handoff...");
-            
-            if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                this.updateLog("Desktop blocked.", 'error');
-                alert("Please open this link on a mobile device to use Augmented Reality.");
-                return;
-            }
-
-            if (this.viewer.canActivateAR) {
-                this.updateLog("WebXR/ARCore Handshake Approved.");
-                this.viewer.activateAR();
-            } else {
-                this.updateLog("Fallback AR required.", 'warn');
-                alert("Ensure your phone's AR services are updated.");
-            }
-        },
-
-        renderList() {
-            const container = document.getElementById('p-list');
-            container.innerHTML = inventory.map(p => `
-                <div class="product-item" data-id="${p.id}" onclick="Engine.select('${p.id}')">
-                    <div style="font-weight:600;">${p.name}</div>
-                    <div style="font-size:12px; color:#999;">$${p.price}</div>
-                </div>
-            `).join('');
-        }
+    // 1. DATA (Simplified URL structure)
+    // We are trusting the URL as-is, assuming Django gave us the raw Cloudinary link.
+    const currentProduct = {
+        name: "{{ products.0.name|escapejs }}",
+        price: "{{ products.0.price|escapejs }}",
+        // Crucial: The URL MUST be https:// and MUST point to the actual file.
+        glbUrl: "{{ products.0.model_3d.url|escapejs }}".replace('http://', 'https://')
     };
 
-    window.onload = () => Engine.init();
+    // Fallback for testing if Django tags are empty
+    if (!currentProduct.glbUrl || currentProduct.glbUrl.includes('None')) {
+        // This is a Google official test model. If this works, your Cloudinary URL is the issue.
+        currentProduct.glbUrl = "https://modelviewer.dev/shared-assets/models/Astronaut.glb";
+        currentProduct.name = "Test Astronaut (System Check)";
+    }
+
+    // 2. INITIALIZE WEB VIEWER
+    document.getElementById('p-title').innerText = currentProduct.name;
+    document.getElementById('p-price').innerText = `$${currentProduct.price}`;
+    document.getElementById('web-preview').src = currentProduct.glbUrl;
+
+    // 3. THE NATIVE INTENT ROUTER
+    document.getElementById('btn-ar').addEventListener('click', () => {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const encodedUrl = encodeURIComponent(currentProduct.glbUrl);
+        const title = encodeURIComponent(currentProduct.name);
+
+        // --- ANDROID ROUTING (Google Scene Viewer) ---
+        if (/android/i.test(userAgent)) {
+            // This is a native deep link. It tells Android to open the Google AR app directly.
+            // It bypasses the browser entirely, dodging CORS and MIME type issues.
+            const intentUrl = `intent://arvr.google.com/scene-viewer/1.0?file=${encodedUrl}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=${encodedUrl};end;`;
+            window.location.href = intentUrl;
+            return;
+        }
+
+        // --- iOS ROUTING (Apple AR Quick Look) ---
+        if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+            // iOS ideally needs a .usdz file. 
+            // If you only have .glb, iOS 13+ MIGHT convert it, but it's not guaranteed.
+            // This creates a hidden link with rel="ar" and clicks it, forcing iOS Quick Look.
+            const anchor = document.createElement('a');
+            anchor.setAttribute('rel', 'ar');
+            // Note: If you have a USDZ field in Django, put that URL here instead.
+            anchor.appendChild(document.createElement('img')); 
+            anchor.setAttribute('href', currentProduct.glbUrl);
+            anchor.click();
+            return;
+        }
+
+        // --- DESKTOP FALLBACK ---
+        document.getElementById('desktop-msg').style.display = 'block';
+    });
 </script>
 </body>
 </html>
