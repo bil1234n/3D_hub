@@ -107,3 +107,10 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Use a temporary directory for large uploads
+FILE_UPLOAD_TEMP_DIR = '/tmp'
+
+FILE_UPLOAD_PERMISSIONS = 0o644
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2097152  # 2MB in bytes
+DATA_UPLOAD_MAX_MEMORY_SIZE = 150000000 # ~143MB
