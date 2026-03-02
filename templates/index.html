@@ -140,25 +140,7 @@
 </div>
 
 <script>
-    // 1. YOUR CLOUDINARY CLOUD NAME (Update this if duhidqjmj is not correct)
-    const CLOUD_NAME = "duhidqjmj";
-    const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}`;
-
-    // Helper function to fix URLs on the fly
-    function fixUrl(url, type = 'image') {
-        if (!url) return "";
-        // If it's already a full URL, return it
-        if (url.startsWith('http')) return url;
-        
-        // Cloudinary needs /raw/ for .glb and /image/ for images
-        const folder = type === 'raw' ? 'raw/upload' : 'image/upload';
-        
-        // Remove the local '/media/' prefix if Django added it
-        const cleanPath = url.replace('/media/', '');
-        
-        return `${BASE_URL}/${folder}/${cleanPath}`;
-    }
-
+    // 1. DATA ARRAY FROM DJANGO
     const inventory = [
         {% for p in products %}
         {
@@ -167,70 +149,47 @@
             category: "{{ p.category }}", 
             price: "{{ p.price }}",
             desc: "{{ p.description|escapejs }}",
-            // FIX: Wrap these in fixUrl()
-            file: "{% if p.model_3d %}{{ p.model_3d.url }}{% endif %}".replace('http://', 'https://'),
+            // Force HTTPS to prevent security blocks
+            file: "{{ p.model_3d.url }}".replace('http://', 'https://'),
+            usdz: "{% if p.usdz_model %}{{ p.usdz_model.url|escapejs }}{% endif %}",
             images: [
-                "{{ p.main_image.url }}".replace('http://', 'https://'),
-                {% for extra in p.gallery.all %}"{{ extra.image.url }}".replace('http://', 'https://'),{% endfor %}
+                "{{ p.main_image.url }}",
+                {% for extra in p.gallery.all %}"{{ extra.image.url }}",{% endfor %}
             ],
             currentImgIndex: 0
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
-    // --- REMAINDER OF YOUR FUNCTIONS STAY THE SAME ---
+    let activeItemID = null;
 
-    function updateViewMode(id, mode) {
-        const item = inventory.find(p => p.id === id);
-        const viewer = document.getElementById('viewer');
-        const overlay = document.getElementById('image-overlay');
-        
-        if (mode === 'image') {
-            viewer.style.opacity = '0';
-            setTimeout(() => {
-                viewer.style.display = 'none';
-                overlay.style.display = 'flex';
-                renderGallery(item);
-            }, 400);
-        } else {
-            overlay.style.display = 'none';
-            viewer.style.display = 'block';
-            setTimeout(() => viewer.style.opacity = '1', 10);
-        }
-    }
-
-    function renderGallery(item) {
-        const img = document.getElementById('static-img');
-        const controls = document.getElementById('gallery-controls');
-        img.src = item.images[item.currentImgIndex];
-        
-        controls.innerHTML = `
-            <button class="nav-btn" onclick="prevImg('${item.id}')">❮</button>
-            <span style="font-size:12px; font-weight:600;">${item.currentImgIndex + 1} / ${item.images.length}</span>
-            <button class="nav-btn" onclick="nextImg('${item.id}')">❯</button>
-        `;
-    }
-
-    function nextImg(id) {
-        const item = inventory.find(p => p.id === id);
-        item.currentImgIndex = (item.currentImgIndex + 1) % item.images.length;
-        renderGallery(item);
-    }
-
-    function prevImg(id) {
-        const item = inventory.find(p => p.id === id);
-        item.currentImgIndex = (item.currentImgIndex - 1 + item.images.length) % item.images.length;
-        renderGallery(item);
-    }
-
+    // 2. THE ADVANCED AR ROUTER (Fixes the Google Redirect)
     function handleARTrigger() {
-        const viewer = document.getElementById('viewer');
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-            // This now uses the full HTTPS URL so it won't fail
-            viewer.activateAR();
-        } else {
+        const item = inventory.find(p => p.id === activeItemID);
+        if (!item) return;
+
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const encodedUrl = encodeURIComponent(item.file);
+        const title = encodeURIComponent(item.name);
+
+        // --- ANDROID NATIVE ROUTE ---
+        if (/android/i.test(userAgent)) {
+            // We use the current page as a fallback so it stays on your site if it fails
+            const fallback = encodeURIComponent(window.location.href);
+            const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${item.file}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`;
+            window.location.href = intent;
+        } 
+        // --- iOS NATIVE ROUTE ---
+        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+            const anchor = document.createElement('a');
+            anchor.setAttribute('rel', 'ar');
+            anchor.appendChild(document.createElement('img'));
+            // Use usdz if you have it, otherwise glb (iOS 13+ supports both)
+            anchor.setAttribute('href', item.usdz || item.file);
+            anchor.click();
+        } 
+        // --- DESKTOP ROUTE ---
+        else {
             const qrModal = document.getElementById('qr-modal');
             const qrImg = document.getElementById('qr-image');
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
@@ -238,14 +197,10 @@
         }
     }
 
-    function closeQR() { document.getElementById('qr-modal').style.display = 'none'; }
-
+    // 3. UI & STATE MANAGEMENT
     function init() {
         const list = document.getElementById('ui-list');
-        if (inventory.length === 0) {
-            list.innerHTML = '<p style="padding:20px; color:#999;">No products found.</p>';
-            return;
-        }
+        if (inventory.length === 0) return;
 
         list.innerHTML = inventory.map((p) => `
             <div class="item-card" id="card-${p.id}" onclick="selectItem('${p.id}')">
@@ -262,6 +217,7 @@
     }
 
     function selectItem(id) {
+        activeItemID = id;
         const item = inventory.find(p => p.id === id);
         const viewer = document.getElementById('viewer');
         const overlay = document.getElementById('image-overlay');
@@ -269,8 +225,6 @@
         viewer.style.display = 'block';
         viewer.style.opacity = '1';
         overlay.style.display = 'none';
-        
-        // Apply the fixed URL
         viewer.src = item.file;
         
         document.getElementById('p-title').innerText = item.name;
@@ -282,6 +236,42 @@
         document.getElementById('info-panel').classList.add('show');
     }
 
+    // GALLERY LOGIC
+    function updateViewMode(id, mode) {
+        const item = inventory.find(p => p.id === id);
+        const viewer = document.getElementById('viewer');
+        const overlay = document.getElementById('image-overlay');
+        if (mode === 'image') {
+            viewer.style.opacity = '0';
+            setTimeout(() => { viewer.style.display = 'none'; overlay.style.display = 'flex'; renderGallery(item); }, 400);
+        } else {
+            overlay.style.display = 'none'; viewer.style.display = 'block';
+            setTimeout(() => viewer.style.opacity = '1', 10);
+        }
+    }
+
+    function renderGallery(item) {
+        const img = document.getElementById('static-img');
+        const controls = document.getElementById('gallery-controls');
+        img.src = item.images[item.currentImgIndex];
+        controls.innerHTML = `<button class="nav-btn" onclick="prevImg('${item.id}')">❮</button>
+            <span style="font-size:12px; font-weight:600;">${item.currentImgIndex + 1} / ${item.images.length}</span>
+            <button class="nav-btn" onclick="nextImg('${item.id}')">❯</button>`;
+    }
+
+    function nextImg(id) {
+        const item = inventory.find(p => p.id === id);
+        item.currentImgIndex = (item.currentImgIndex + 1) % item.images.length;
+        renderGallery(item);
+    }
+
+    function prevImg(id) {
+        const item = inventory.find(p => p.id === id);
+        item.currentImgIndex = (item.currentImgIndex - 1 + item.images.length) % item.images.length;
+        renderGallery(item);
+    }
+
+    function closeQR() { document.getElementById('qr-modal').style.display = 'none'; }
     function toggleInfo() { document.getElementById('info-panel').classList.toggle('show'); }
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
 
