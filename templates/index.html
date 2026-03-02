@@ -24,7 +24,7 @@
             padding: 20px; margin-bottom: 15px; cursor: pointer; border-radius: 20px;
             display: flex; flex-direction: column; border: 1px solid transparent; background: #fcfcfc;
         }
-        .item-card.active { background: #fff; border-color: var(--accent); box-shadow: var(--shadow); }
+        .item-card.active { background: #fff; border-color: var(--accent); box-shadow: var(--shadow); border: 1px solid var(--accent); }
 
         .view-selector {
             margin-top: 12px; padding: 10px; border-radius: 10px; border: 1px solid #eee;
@@ -34,6 +34,25 @@
         /* Main Display Stage */
         .main-stage { flex: 1; position: relative; background: radial-gradient(circle at center, #ffffff 0%, #f2f2f2 100%); }
         model-viewer { width: 100%; height: 100%; outline: none; --poster-color: transparent; }
+
+        /* AR Interaction Dock - Designed for DOM Overlay */
+        .interaction-dock {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 12px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px);
+            padding: 10px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        
+        /* Magic selector: keeps buttons visible inside the AR camera */
+        :xr-overlay .interaction-dock { display: flex !important; bottom: 40px; }
+
+        .tool-btn {
+            width: 50px; height: 50px; border-radius: 18px; border: none; background: white;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            color: #666; transition: all 0.3s ease;
+        }
+        .tool-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
+        .tool-btn.active { background: var(--dark); color: white; transform: translateY(-5px); }
 
         /* Image Gallery Overlay */
         #image-overlay {
@@ -49,29 +68,13 @@
         }
         .nav-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--dark); }
 
-        /* Control UI Dock (Top) */
+        /* Control UI Dock (Top Right) */
         .control-dock { position: absolute; top: 30px; right: 30px; display: flex; gap: 15px; z-index: 100; }
         .icon-btn { 
             width: 54px; height: 54px; background: white; border: none; border-radius: 50%;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
             box-shadow: var(--shadow); color: var(--dark);
         }
-        .icon-btn:hover { background: var(--dark); color: white; transform: scale(1.1); }
-
-        /* Professional 3D Interaction Dock (Bottom) */
-        .interaction-dock {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 12px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px);
-            padding: 10px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000;
-            border: 1px solid rgba(255,255,255,0.5);
-        }
-        .tool-btn {
-            width: 50px; height: 50px; border-radius: 18px; border: none; background: white;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-            color: #666; transition: all 0.3s ease;
-        }
-        .tool-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
-        .tool-btn.active { background: var(--dark); color: white; transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
 
         /* Information Panel */
         .glass-panel { 
@@ -90,7 +93,7 @@
             display: flex; align-items: center; justify-content: center; gap: 12px;
         }
 
-        /* QR Code Modal */
+        /* QR Code Modal for Desktop */
         #qr-modal {
             display: none; position: fixed; inset: 0;
             background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(12px);
@@ -114,23 +117,25 @@
     <model-viewer id="viewer" 
         camera-controls auto-rotate 
         shadow-intensity="1.8" shadow-softness="1"
-        environment-image="neutral" exposure="1.1">
-    </model-viewer>
+        environment-image="neutral" exposure="1.1"
+        ar ar-modes="webxr scene-viewer quick-look" 
+        ar-scale="fixed">
 
-    <div class="interaction-dock">
-        <button class="tool-btn" id="btn-move" onclick="setInteractionMode('move')" title="Move">
-            <svg viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
-        </button>
-        <button class="tool-btn active" id="btn-rotate" onclick="setInteractionMode('rotate')" title="Rotate">
-            <svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-        </button>
-        <button class="tool-btn" onclick="adjustZoom(1.2)" title="Minimize (Zoom Out)">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-        </button>
-        <button class="tool-btn" onclick="adjustZoom(0.8)" title="Maximize (Zoom In)">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-        </button>
-    </div>
+        <div class="interaction-dock" slot="xr-overlay">
+            <button class="tool-btn" id="btn-move" onclick="setInteractionMode('move')" title="Move">
+                <svg viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+            </button>
+            <button class="tool-btn active" id="btn-rotate" onclick="setInteractionMode('rotate')" title="Rotate">
+                <svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            </button>
+            <button class="tool-btn" onclick="adjustZoom(1.2)" title="Minimize">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            </button>
+            <button class="tool-btn" onclick="adjustZoom(0.8)" title="Maximize">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            </button>
+        </div>
+    </model-viewer>
 
     <div id="image-overlay">
         <img id="static-img" src="">
@@ -162,6 +167,7 @@
 </div>
 
 <script>
+    // 1. DATA FROM DJANGO
     const inventory = [
         {% for p in products %}
         {
@@ -181,29 +187,21 @@
         {% endfor %}
     ];
 
-    let activeID = null;
+    let activeItemID = null;
     const viewer = document.getElementById('viewer');
 
-    // 1. NATIVE AR ROUTER (Fixes the Google Redirect)
+    // 2. NATIVE AR ROUTER (Fixed to prioritize WebXR for buttons)
     function handleARTrigger() {
-        const item = inventory.find(p => p.id === activeID);
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const encodedUrl = encodeURIComponent(item.file);
-        const title = encodeURIComponent(item.name);
+        const item = inventory.find(p => p.id === activeItemID);
+        if (!item) return;
 
-        if (/android/i.test(userAgent)) {
-            const fallback = encodeURIComponent(window.location.href);
-            const intent = `intent://arvr.google.com/scene-viewer/1.0?file=${item.file}&title=${title}&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=${fallback};end;`;
-            window.location.href = intent;
-        } 
-        else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-            const anchor = document.createElement('a');
-            anchor.setAttribute('rel', 'ar');
-            anchor.appendChild(document.createElement('img'));
-            anchor.setAttribute('href', item.usdz || item.file);
-            anchor.click();
-        } 
-        else {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            // activateAR() will automatically try WebXR first, 
+            // which enables our buttons inside the camera.
+            viewer.activateAR();
+        } else {
             const qrModal = document.getElementById('qr-modal');
             const qrImg = document.getElementById('qr-image');
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`;
@@ -211,18 +209,17 @@
         }
     }
 
-    // 2. PROFESSIONAL 3D NAVIGATION CONTROLS
+    // 3. 3D INTERACTION LOGIC
     function setInteractionMode(mode) {
         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
         
         if (mode === 'move') {
             document.getElementById('btn-move').classList.add('active');
-            viewer.disablePan = false; // Enable moving
-            // Professional tip: To force "move only" we often disable auto-rotate here
+            viewer.disablePan = false; 
             viewer.autoRotate = false;
         } else {
             document.getElementById('btn-rotate').classList.add('active');
-            viewer.disablePan = true; // Disable moving, keep rotation
+            viewer.disablePan = true;
             viewer.autoRotate = true;
         }
     }
@@ -235,7 +232,7 @@
         }
     }
 
-    // 3. UI ENGINE
+    // 4. UI ENGINE
     function init() {
         const list = document.getElementById('ui-list');
         if (inventory.length === 0) return;
@@ -252,11 +249,11 @@
         `).join('');
         
         selectItem(inventory[0].id);
-        setInteractionMode('rotate'); // Set default
+        setInteractionMode('rotate');
     }
 
     function selectItem(id) {
-        activeID = id;
+        activeItemID = id;
         const item = inventory.find(p => p.id === id);
         const overlay = document.getElementById('image-overlay');
 
@@ -264,7 +261,7 @@
         viewer.style.opacity = '1';
         overlay.style.display = 'none';
         viewer.src = item.file;
-        viewer.fieldOfView = "45deg"; // Reset zoom for new product
+        viewer.fieldOfView = "45deg";
         
         document.getElementById('p-title').innerText = item.name;
         document.getElementById('p-price').innerText = `$${item.price}`;
@@ -275,7 +272,6 @@
         document.getElementById('info-panel').classList.add('show');
     }
 
-    // 4. GALLERY & UTILITIES
     function updateViewMode(id, mode) {
         const item = inventory.find(p => p.id === id);
         const overlay = document.getElementById('image-overlay');
