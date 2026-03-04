@@ -98,12 +98,14 @@ CLOUDINARY_STORAGE = {
 # 1. Global storage is set to STANDARD for images
 
 # Replace your DEFAULT_FILE_STORAGE with this:
+
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Change 'CompressedManifestStaticFilesStorage' to this:
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
