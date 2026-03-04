@@ -6,22 +6,19 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-unique-key-here')
 
 # DEBUG should be False in production (Render)
-
 DEBUG = True
 
 # Allow Render to host the site
-
 ALLOWED_HOSTS = ['*']
 
 # CSRF Trust for Render URLs
-
 CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
 
 # Application definition
+
 INSTALLED_APPS = [
     'cloudinary_storage',       # 1. Top
     'django.contrib.admin',
@@ -49,7 +46,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'luxury_ar.urls'
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -78,7 +74,6 @@ DATABASES = {
 }
 
 # --- CLOUDINARY CONFIGURATION ---
-
 CLOUD_NAME = os.environ.get('CLOUDINARY_CLOUD_NAME')
 API_KEY = os.environ.get('CLOUDINARY_API_KEY')
 API_SECRET = os.environ.get('CLOUDINARY_API_SECRET')
@@ -95,46 +90,26 @@ CLOUDINARY_STORAGE = {
     'SECURE': True,
 }
 
-# 1. Global storage is set to STANDARD for images
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+MEDIA_URL = '/media/'
 
-# Replace your DEFAULT_FILE_STORAGE with this:
-# --- STATIC FILES (CSS, JS, Images) ---
+# --- STATIC AND MEDIA CONFIGURATION ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# --- MEDIA FILES (User Uploads / Cloudinary) ---
-# This ensures images look for the Cloudinary URL, not a local /media/ folder
-MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# --- STORAGE ENGINES ---
-# 1. This is for Django 5.1+ compatibility
-STORAGES = {
-    "default": {
-        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
-    },
-}
-
-# 2. This is for the 'cloudinary_storage' library compatibility (Fixes your last error)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-
 # Internationalization
-
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Use a temporary directory for large uploads
-
 FILE_UPLOAD_TEMP_DIR = '/tmp'
-
 FILE_UPLOAD_PERMISSIONS = 0o644
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2097152  # 2MB in bytes
+
 DATA_UPLOAD_MAX_MEMORY_SIZE = 150000000 # ~143MB 
