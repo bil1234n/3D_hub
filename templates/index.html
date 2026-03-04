@@ -261,20 +261,16 @@
             category: "{{ p.category }}", 
             price: "{{ p.price }}",
             desc: "{{ p.description|escapejs }}",
+            // Pulling the new Variants from database
             variants: [
                 {% for v in p.variants.all %}
-                { 
-                    name: "{{ v.variant_name|escapejs }}", 
-                    file: "{{ v.get_model_url|escapejs }}" // Now returns full URL
+                {
+                    name: "{{ v.variant_name|escapejs }}",
+                    file: "{{ v.get_model_url|escapejs }}"
                 }{% if not forloop.last %},{% endif %}
                 {% endfor %}
             ],
-            images: [
-                "{{ p.main_image.url }}",
-                {% for extra in p.gallery.all %}
-                "{{ extra.image.url }}",
-                {% endfor %}
-            ],
+            images: ["{{ p.main_image.url }}", {% for extra in p.gallery.all %}"{{ extra.image.url }}",{% endfor %}],
             currentImgIndex: 0
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
