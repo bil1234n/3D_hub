@@ -98,12 +98,17 @@ CLOUDINARY_STORAGE = {
 # 1. Global storage is set to STANDARD for images
 
 # Replace your DEFAULT_FILE_STORAGE with this:
-# --- STATIC AND MEDIA CONFIGURATION ---
-
+# --- STATIC FILES (CSS, JS, Images) ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# This is the ONLY place you need to define storage
+# --- MEDIA FILES (User Uploads / Cloudinary) ---
+# This ensures images look for the Cloudinary URL, not a local /media/ folder
+MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# --- STORAGE ENGINES ---
+# 1. This is for Django 5.1+ compatibility
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
@@ -113,9 +118,8 @@ STORAGES = {
     },
 }
 
-# Ensure Cloudinary knows where to point
-MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# 2. This is for the 'cloudinary_storage' library compatibility (Fixes your last error)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Internationalization
 
