@@ -98,28 +98,23 @@ CLOUDINARY_STORAGE = {
 # 1. Global storage is set to STANDARD for images
 
 # Replace your DEFAULT_FILE_STORAGE with this:
+# --- STATIC AND MEDIA CONFIGURATION ---
 
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# This is the ONLY place you need to define storage
 STORAGES = {
     "default": {
         "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
-        # Change 'CompressedManifestStaticFilesStorage' to this:
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
-# Keep this for your URL generation
+# Ensure Cloudinary knows where to point
 MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
-
-# --- STATIC AND MEDIA CONFIGURATION ---
-
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
-
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Internationalization
