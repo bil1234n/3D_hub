@@ -86,7 +86,18 @@ CLOUDINARY_STORAGE = {
     'API_KEY': API_KEY,
     'API_SECRET': API_SECRET,
     'SECURE': True,
+    # Add this line to force chunked uploading for large files
+    'uploade_large_chunk_size': 5242880, # 5MB chunks
 }
+
+# Add this configuration specifically for the Cloudinary Python SDK
+import cloudinary
+cloudinary.config(
+    cloud_name=CLOUD_NAME,
+    api_key=API_KEY,
+    api_secret=API_SECRET,
+    secure=True
+)
 
 # 1. Global storage is set to STANDARD for images
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
