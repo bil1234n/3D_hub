@@ -28,9 +28,9 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',
-    'cloudinary',  # Move this up here
+    'django.contrib.messages',  
     'django.contrib.staticfiles',
+    'cloudinary',
     'rest_framework',
     'corsheaders',
     'furniture',
@@ -106,7 +106,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
-MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Internationalization
