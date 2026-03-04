@@ -35,6 +35,9 @@
             background: var(--dark); color: white; border: none; width: 100%;
             padding: 15px; border-radius: 12px; font-weight: 600; margin-top: 30px;
         }
+        
+    .variant-row { transition: 0.3s; border: 1px solid #eee !important; }
+    .variant-row:hover { border-color: var(--accent) !important; }
     </style>
 </head>
 <body>
@@ -72,9 +75,56 @@
             </div>
             <div id="preview-grid" class="preview-grid"></div>
 
-            <div class="section-title">Technical</div>
-            <label>3D Model (.glb)</label>
-            {{ form.model_3d }}
+            <!-- Inside the form, after the Visuals section -->
+
+<div class="section-title">3D Model Variants (Color & Type)</div>
+<div id="variant-container">
+    <!-- Default Row -->
+    <div class="variant-row row g-2 mb-3 align-items-end border p-3 rounded bg-white">
+        <div class="col-md-4">
+            <label class="small fw-bold">Type & Color</label>
+            <input type="text" name="variant_name[]" class="form-control" placeholder="e.g. Default / Red Velvet">
+        </div>
+        <div class="col-md-4">
+            <label class="small fw-bold">3D File (.glb)</label>
+            <input type="file" name="variant_file[]" class="form-control" accept=".glb">
+        </div>
+        <div class="col-md-3">
+            <label class="small fw-bold">Or External Link</label>
+            <input type="url" name="variant_link[]" class="form-control" placeholder="https://...">
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-outline-danger w-100 remove-variant">×</button>
+        </div>
+    </div>
+</div>
+
+<button type="button" class="btn btn-sm btn-dark mb-4" id="add-variant">+ Add Another Color/Variant</button>
+
+
+<script>
+    // Logic to add dynamic variant rows
+    document.getElementById('add-variant').addEventListener('click', function() {
+        const container = document.getElementById('variant-container');
+        const newRow = container.firstElementChild.cloneNode(true);
+        
+        // Clear inputs in the cloned row
+        newRow.querySelectorAll('input').forEach(input => input.value = '');
+        container.appendChild(newRow);
+    });
+
+    // Logic to remove rows
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-variant')) {
+            const rows = document.querySelectorAll('.variant-row');
+            if (rows.length > 1) {
+                e.target.closest('.variant-row').remove();
+            } else {
+                alert("At least one model variant is required.");
+            }
+        }
+    });
+</script>
 
             <button type="submit" class="submit-btn">PUBLISH PRODUCT</button>
         </form>
