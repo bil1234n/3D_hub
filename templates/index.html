@@ -253,8 +253,9 @@
 </div>
 
 <script>
-    const CLOUDINARY_BASE = "http://res.cloudinary.com/duhidqjmj";
-
+    // Change this to your actual Cloudinary cloud name base
+    const CLOUDINARY_BASE = "https://res.cloudinary.com/duhidqjmj";
+    
     const inventory = [
         {% for p in products %}
         {
@@ -265,14 +266,26 @@
             desc: "{{ p.description|escapejs }}",
             variants: [
                 {% for v in p.variants.all %}
-                { name: "{{ v.variant_name|escapejs }}", file: "{{ v.get_model_url|escapejs }}" },
+                { 
+                    name: "{{ v.variant_name|escapejs }}", 
+                    // Fix for 3D Models
+                    file: "{{ v.get_model_url|escapejs }}".startsWith('http') 
+                          ? "{{ v.get_model_url|escapejs }}" 
+                          : CLOUDINARY_BASE + "{{ v.get_model_url|escapejs }}"
+                }{% if not forloop.last %},{% endif %}
                 {% endfor %}
             ],
-            // Fix: Check if URL is absolute, otherwise prepend base
             images: [
-                "{{ p.main_image.url }}".startsWith('http') ? "{{ p.main_image.url }}" : CLOUDINARY_BASE + "{{ p.main_image.url }}",
+                // Fix for Main Image
+                "{{ p.main_image.url }}".startsWith('http') 
+                    ? "{{ p.main_image.url }}" 
+                    : CLOUDINARY_BASE + "{{ p.main_image.url }}",
+                
                 {% for extra in p.gallery.all %}
-                "{{ extra.image.url }}".startsWith('http') ? "{{ extra.image.url }}" : CLOUDINARY_BASE + "{{ extra.image.url }}",
+                // Fix for Gallery Images
+                "{{ extra.image.url }}".startsWith('http') 
+                    ? "{{ extra.image.url }}" 
+                    : CLOUDINARY_BASE + "{{ extra.image.url }}",
                 {% endfor %}
             ],
             currentImgIndex: 0
