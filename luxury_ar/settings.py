@@ -23,14 +23,14 @@ CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
 
 # Application definition
 INSTALLED_APPS = [
-    'cloudinary_storage',
+    'cloudinary_storage',       # 1. Top
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',  
-    'django.contrib.staticfiles',
-    'cloudinary',
+    'django.contrib.messages',
+    'django.contrib.staticfiles', # 2. Middle
+    'cloudinary',                # 3. Below staticfiles
     'rest_framework',
     'corsheaders',
     'furniture',
@@ -97,7 +97,18 @@ CLOUDINARY_STORAGE = {
 
 # 1. Global storage is set to STANDARD for images
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+# Replace your DEFAULT_FILE_STORAGE with this:
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# Keep this for your URL generation
+MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
 
 # --- STATIC AND MEDIA CONFIGURATION ---
 
