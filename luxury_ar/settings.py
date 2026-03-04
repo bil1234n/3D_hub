@@ -22,16 +22,15 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
 
 # Application definition
-
 INSTALLED_APPS = [
-    'cloudinary_storage', # MUST be the first app here
+    'cloudinary_storage',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'cloudinary',  # Move this up here
     'django.contrib.staticfiles',
-    'cloudinary', # MUST be right after staticfiles
     'rest_framework',
     'corsheaders',
     'furniture',
