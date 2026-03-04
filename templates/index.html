@@ -253,6 +253,8 @@
 </div>
 
 <script>
+    const CLOUDINARY_BASE = "http://res.cloudinary.com/duhidqjmj";
+
     const inventory = [
         {% for p in products %}
         {
@@ -261,16 +263,18 @@
             category: "{{ p.category }}", 
             price: "{{ p.price }}",
             desc: "{{ p.description|escapejs }}",
-            // Pulling the new Variants from database
             variants: [
                 {% for v in p.variants.all %}
-                {
-                    name: "{{ v.variant_name|escapejs }}",
-                    file: "{{ v.get_model_url|escapejs }}"
-                }{% if not forloop.last %},{% endif %}
+                { name: "{{ v.variant_name|escapejs }}", file: "{{ v.get_model_url|escapejs }}" },
                 {% endfor %}
             ],
-            images: ["{{ p.main_image.url }}", {% for extra in p.gallery.all %}"{{ extra.image.url }}",{% endfor %}],
+            // Fix: Check if URL is absolute, otherwise prepend base
+            images: [
+                "{{ p.main_image.url }}".startsWith('http') ? "{{ p.main_image.url }}" : CLOUDINARY_BASE + "{{ p.main_image.url }}",
+                {% for extra in p.gallery.all %}
+                "{{ extra.image.url }}".startsWith('http') ? "{{ extra.image.url }}" : CLOUDINARY_BASE + "{{ extra.image.url }}",
+                {% endfor %}
+            ],
             currentImgIndex: 0
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
