@@ -253,9 +253,6 @@
 </div>
 
 <script>
-    // Change this to your actual Cloudinary cloud name base
-    const CLOUDINARY_BASE = "https://res.cloudinary.com/duhidqjmj";
-    
     const inventory = [
         {% for p in products %}
         {
@@ -268,24 +265,14 @@
                 {% for v in p.variants.all %}
                 { 
                     name: "{{ v.variant_name|escapejs }}", 
-                    // Fix for 3D Models
-                    file: "{{ v.get_model_url|escapejs }}".startsWith('http') 
-                          ? "{{ v.get_model_url|escapejs }}" 
-                          : CLOUDINARY_BASE + "{{ v.get_model_url|escapejs }}"
+                    file: "{{ v.get_model_url|escapejs }}" // Now returns full URL
                 }{% if not forloop.last %},{% endif %}
                 {% endfor %}
             ],
             images: [
-                // Fix for Main Image
-                "{{ p.main_image.url }}".startsWith('http') 
-                    ? "{{ p.main_image.url }}" 
-                    : CLOUDINARY_BASE + "{{ p.main_image.url }}",
-                
+                "{{ p.main_image.url }}",
                 {% for extra in p.gallery.all %}
-                // Fix for Gallery Images
-                "{{ extra.image.url }}".startsWith('http') 
-                    ? "{{ extra.image.url }}" 
-                    : CLOUDINARY_BASE + "{{ extra.image.url }}",
+                "{{ extra.image.url }}",
                 {% endfor %}
             ],
             currentImgIndex: 0
