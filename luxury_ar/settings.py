@@ -19,14 +19,14 @@ CSRF_TRUSTED_ORIGINS = ['https://*.onrender.com']
 
 # Application definition
 INSTALLED_APPS = [
-    'cloudinary_storage', # MUST be the first app here
+    'cloudinary_storage',       # 1. Top
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'cloudinary', # MUST be right after staticfiles
+    'django.contrib.staticfiles', # 2. Middle
+    'cloudinary',                # 3. Below staticfiles
     'rest_framework',
     'corsheaders',
     'furniture',
@@ -89,14 +89,28 @@ CLOUDINARY_STORAGE = {
     'SECURE': True,
 }
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-MEDIA_URL = '/media/'
-
-# --- STATIC AND MEDIA CONFIGURATION ---
+# --- STATIC FILES (CSS, JS, Images) ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# --- MEDIA FILES (User Uploads / Cloudinary) ---
+# This ensures images look for the Cloudinary URL, not a local /media/ folder
+MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# --- STORAGE ENGINES ---
+# 1. This is for Django 5.1+ compatibility
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
+
+# 2. This is for the 'cloudinary_storage' library compatibility (Fixes your last error)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
