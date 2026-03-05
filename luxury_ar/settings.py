@@ -87,7 +87,8 @@ CLOUDINARY_STORAGE = {
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL = f'https://res.cloudinary.com/{CLOUD_NAME}/'
+# --- MEDIA FILES (User Uploads / Cloudinary) ---
+MEDIA_URL = '/media/'  
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # --- STORAGE ENGINES ---
